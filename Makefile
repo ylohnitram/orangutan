@@ -15,7 +15,7 @@ VENV_DIR ?= .venv
 PYTHON_VENV := $(VENV_DIR)/bin/python
 PIP := $(PYTHON_VENV) -m pip
 
-.PHONY: venv install run-pipeline run-pipeline-ci run-pipeline-real clean
+.PHONY: venv install run-pipeline run-pipeline-ci run-pipeline-real run-ui run-ui-real clean
 
 venv:
 	$(PYTHON) -m venv $(VENV_DIR)
@@ -43,6 +43,14 @@ run-pipeline-real: install
 	$(PYTHON_VENV) orchestrator.py \
 		--task "FlowLint orchestrator real CLI pipeline run" \
 		--state-path state-real.json
+
+# Interactive CLI (mock agents)
+run-ui: install
+	$(PYTHON_VENV) orangutan_cli.py --use-mock-clis
+
+# Interactive CLI (real CLIs)
+run-ui-real: install
+	$(PYTHON_VENV) orangutan_cli.py
 
 clean:
 	rm -rf $(VENV_DIR) state-local.json state-ci.json state-real.json state.json

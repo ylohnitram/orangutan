@@ -6,7 +6,7 @@ Responsibilities (per architecture spec, simplified for v0.1.0):
 - Load agent definitions from agents/*.md files.
 - Initialize and maintain the TEAM MEMORY state object in memory.
 - Execute agents in a hardcoded sequence:
-    analyst → architect → coder → devops → reviewer → release-manager
+    orchestrator → analyst → architect → coder → devops → reviewer → release-manager
 - Invoke external CLI tools defined in each agent's frontmatter via subprocess.
 - Log outputs to stdout / stderr and update TEAM MEMORY.
 - Persist final TEAM MEMORY state to a JSON file for debugging.
@@ -22,12 +22,13 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import yaml  # requires PyYAML
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 MOCK_AGENT_SCRIPTS: Dict[str, str] = {
+    "orchestrator": "mock_gemini.py",
     "analyst": "mock_gemini.py",
     "architect": "mock_claude.py",
     "coder": "mock_codex.py",
@@ -36,6 +37,15 @@ MOCK_AGENT_SCRIPTS: Dict[str, str] = {
     "release-manager": "mock_gemini.py",
     "security": "mock_claude.py",
 }
+PIPELINE_V01: List[str] = [
+    "orchestrator",
+    "analyst",
+    "architect",
+    "coder",
+    "devops",
+    "reviewer",
+    "release-manager",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +229,10 @@ def execute_single_agent(
     state: Dict[str, Any],
     task: str,
     use_mock_clis: bool = False,
-) -> None:
+    *,
+    verbose: bool = True,
+    on_process_start: Optional[Callable[[Optional[subprocess.Popen]], None]] = None,
+) -> Tuple[bool, str, str]:
     """
     Execute one agent via subprocess and update TEAM MEMORY.
 
@@ -229,6 +242,9 @@ def execute_single_agent(
     - Logs basic info to stdout / stderr.
     - Stores the raw stdout as agent_outputs[agent.name]["summary"].
     - When use_mock_clis is True, swap CLI execution to mock_* scripts.
+
+    Returns:
+        Tuple of (success flag, stdout, stderr).
 
     TODO:
     - In a later version, parse structured sections (SUMMARY/ARTIFACTS/NEXT_ACTION).
@@ -258,32 +274,47 @@ def execute_single_agent(
                 else python_dir
             )
 
+    stdout = ""
+    stderr = ""
+    success = False
+    process: Optional[subprocess.Popen[str]] = None
     try:
-        completed = subprocess.run(
+        process = subprocess.Popen(
             cmd,
-            input=input_text,
-            capture_output=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
             env=env,
-            check=False,
         )
-        success = completed.returncode == 0
-        stdout = (completed.stdout or "").strip()
-        stderr = (completed.stderr or "").strip()
+        if on_process_start:
+            on_process_start(process)
+        stdout, stderr = process.communicate(input=input_text)
+        stdout = (stdout or "").strip()
+        stderr = (stderr or "").strip()
+        success = process.returncode == 0
     except FileNotFoundError as exc:
-        success = False
-        stdout = ""
         stderr = f"Failed to execute agent command: {exc}"
+        stdout = ""
+        success = False
+    except KeyboardInterrupt:
+        if process and process.poll() is None:
+            process.terminate()
+        raise
+    finally:
+        if on_process_start:
+            on_process_start(None)
 
     separator = "=" * 80
-    print(separator)
-    print(f"[orchestrator] Agent: {agent.name}")
-    print(f"[orchestrator] Command: {' '.join(cmd)}")
-    print(f"[orchestrator] Success: {success}")
-    if stdout:
-        print(f"[orchestrator] STDOUT:\n{stdout}")
-    if stderr:
-        print(f"[orchestrator] STDERR:\n{stderr}", file=sys.stderr)
+    if verbose:
+        print(separator)
+        print(f"[orchestrator] Agent: {agent.name}")
+        print(f"[orchestrator] Command: {' '.join(cmd)}")
+        print(f"[orchestrator] Success: {success}")
+        if stdout:
+            print(f"[orchestrator] STDOUT:\n{stdout}")
+        if stderr:
+            print(f"[orchestrator] STDERR:\n{stderr}", file=sys.stderr)
 
     # Minimal state update: store raw output as summary
     state["agent_outputs"][agent.name] = {
@@ -302,37 +333,47 @@ def execute_single_agent(
         }
     )
 
+    return success, stdout, stderr
+
 
 def run_v01_pipeline(
     agents: Dict[str, Agent],
     state: Dict[str, Any],
     task: str,
     use_mock_clis: bool = False,
-) -> None:
+    *,
+    verbose: bool = True,
+    progress_callback: Optional[
+        Callable[[str, bool, str, str, Dict[str, Any]], None]
+    ] = None,
+    on_process_start: Optional[Callable[[Optional[subprocess.Popen]], None]] = None,
+) -> bool:
     """
-    Run the hardcoded v0.1.0 pipeline.
-
-    For this round:
-    analyst → architect → coder → devops → reviewer → release-manager
+    Run the hardcoded v0.1.0 pipeline and return True if all agents succeeded.
     """
-    pipeline: List[str] = [
-        "analyst",
-        "architect",
-        "coder",
-        "devops",
-        "reviewer",
-        "release-manager",
-    ]
-
-    for name in pipeline:
+    overall_success = True
+    for name in PIPELINE_V01:
         agent = agents.get(name)
         if not agent:
             print(
                 f"[orchestrator] WARNING: Agent '{name}' not found; skipping",
                 file=sys.stderr,
             )
+            overall_success = False
             continue
-        execute_single_agent(agent, state, task, use_mock_clis=use_mock_clis)
+        success, stdout, stderr = execute_single_agent(
+            agent,
+            state,
+            task,
+            use_mock_clis=use_mock_clis,
+            verbose=verbose,
+            on_process_start=on_process_start,
+        )
+        if progress_callback:
+            progress_callback(agent.name, success, stdout, stderr, state)
+        if not success:
+            overall_success = False
+    return overall_success
 
 
 def save_state(state: Dict[str, Any], path: str) -> None:
@@ -395,9 +436,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     state = initialize_state(args.task, args.workflow_rules)
-    run_v01_pipeline(agents, state, args.task, use_mock_clis=args.use_mock_clis)
+    pipeline_success = run_v01_pipeline(
+        agents,
+        state,
+        args.task,
+        use_mock_clis=args.use_mock_clis,
+    )
     save_state(state, args.state_path)
     print(f"[orchestrator] Saved TEAM MEMORY state to {args.state_path}")
+    if not pipeline_success:
+        print(
+            "[orchestrator] Completed with at least one agent failure",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 

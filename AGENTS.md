@@ -12,6 +12,8 @@
 - `make run-pipeline` — runs the orchestration loop locally with `state-local.json` using the bundled mock CLIs; fastest way to smoke test a change without hitting external LLMs.
 - `make run-pipeline-real` — executes the same pipeline but calls the real `q`, `gemini`, `codex`, and `claude` CLIs, writing `state-real.json`; requires those tools to be installed and authenticated.
 - `make run-pipeline-ci` — mirrors the CI task definition, writing `state-ci.json`, and also uses the mock CLIs for deterministic results; use it before opening a PR.
+- `make run-ui` — launches the interactive orangutan CLI powered by mock agents so you can chat with the orchestrator agent locally.
+- `make run-ui-real` — launches the same interactive CLI but forwards requests to the real CLIs; ensure all tools are installed and authenticated first.
 - `make clean` — deletes `.venv` and transient state files when a fresh run is needed.
 - Pass `--use-mock-clis` to `orchestrator.py` when invoking it directly to pin execution to the bundled mock scripts; omit the flag to hit the real CLIs defined in `agents/*.md`.
 
@@ -22,7 +24,7 @@
 
 ## Testing Guidelines
 - Create a `tests/` directory when adding unit coverage; use pytest, naming files `test_<module>.py`, and keep reusable fixtures in `tests/fixtures/`.
-- Document integration proof by running `make run-pipeline` and summarizing agent order (`analyst → architect → coder → devops → reviewer → release-manager`) plus notable logs in the PR.
+- Document integration proof by running `make run-pipeline` and summarizing agent order (`orchestrator → analyst → architect → coder → devops → reviewer → release-manager`) plus notable logs in the PR.
 - Stabilize runs by pinning mock agent CLIs or clearly stating any required external tools.
 
 ## Commit & Pull Request Guidelines
