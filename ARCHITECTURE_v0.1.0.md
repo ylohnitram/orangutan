@@ -1,6 +1,6 @@
 ## ARCHITECTURE_OVERVIEW
 
-The v0.1.0.0.0.0.0.0.0.0 multi-agent orchestrator is a minimal Python system that executes a fixed pipeline of 5 LLM agents (architect, coder, devops, reviewer, release-manager) via CLI subprocesses. Each agent is defined as a Markdown file with YAML frontmatter specifying its CLI command. The orchestrator maintains a shared state object (TEAM MEMORY) that gets passed to each agent and updated with their outputs. This MVP validates the core concept of CLI-based multi-LLM orchestration with structured I/O contracts.
+The v0.1.0 multi-agent orchestrator is a minimal Python system that executes a fixed pipeline of 5 LLM agents (architect, coder, devops, reviewer, release-manager) via CLI subprocesses. Each agent is defined as a Markdown file with YAML frontmatter specifying its CLI command. The orchestrator maintains a shared state object (TEAM MEMORY) that gets passed to each agent and updated with their outputs. This MVP validates the core concept of CLI-based multi-LLM orchestration with structured I/O contracts.
 
 ## FILE_STRUCTURE
 ```
@@ -27,7 +27,7 @@ project-root/
 state = {
     "project_context": {
         "name": str,              # Project name
-        "version": str,           # Current version (e.g., "v0.1.0.0.0.0.0.0.0.0")
+        "version": str,           # Current version (e.g., "v0.1.0")
         "goal": str,              # Overall project goal
         "current_task": str       # Active task being worked on
     },
@@ -60,7 +60,7 @@ state = {
     },
     "workflow_rules": {
         "loaded_from": str,       # Path to workflow rules file
-        "rules": list            # List of parsed rules (placeholder for v0.1.0.0.0.0.0.0.0.0)
+        "rules": list            # List of parsed rules (placeholder for v0.1.0)
     },
     "execution_history": [
         {
@@ -78,7 +78,7 @@ state = {
 **Responsibilities of orchestrator.py:**
 - Load agent definitions from `agents/*.md` files
 - Initialize and maintain the TEAM MEMORY state
-- Execute agents in hardcoded v0.1.0.0.0.0.0.0.0.0 sequence: architect → coder → devops → reviewer → release-manager
+- Execute agents in hardcoded v0.1.0 sequence: architect → coder → devops → reviewer → release-manager
 - Run CLI tools as subprocesses based on agent frontmatter
 - Parse structured responses and update state
 
@@ -87,7 +87,7 @@ state = {
 1. `main()`: Entry point, orchestrates the pipeline
 2. `initialize_state()`: Creates initial TEAM MEMORY structure
 3. `load_all_agents()`: Loads all agent definitions from agents/ directory
-4. `run_pipeline()`: Executes the hardcoded v0.1.0.0.0.0.0.0.0.0 agent sequence
+4. `run_pipeline()`: Executes the hardcoded v0.1.0 agent sequence
 5. `execute_single_agent(agent_name, state)`: Runs one agent and updates state
 6. `save_state()`: Persists state to JSON file for debugging
 
@@ -127,7 +127,7 @@ state = {
 ### Task 5: Implement orchestrator.py
 - **Files to edit:** Create `orchestrator.py`
 - **Functions to implement:**
-  - `main()`: Entry point with hardcoded v0.1.0.0.0.0.0.0.0.0 pipeline
+  - `main()`: Entry point with hardcoded v0.1.0 pipeline
   - `run_v01_pipeline()`: Execute 5 agents in sequence
   - Command-line arg parsing for initial task
 - **Acceptance criteria:** Full pipeline runs end-to-end with state passing between agents
@@ -152,7 +152,7 @@ state = {
 - Create `.gitignore` with: `__pycache__/`, `*.pyc`, `state.json`
 
 ### Task 4: Create test harness
-- Create `test_v01.sh` script that runs: `python orchestrator.py --task "Build v0.1.0.0.0.0.0.0.0.0 orchestrator"`
+- Create `test_v01.sh` script that runs: `python orchestrator.py --task "Build v0.1.0 orchestrator"`
 - Create mock CLI scripts (`mock_gemini.py`, `mock_claude.py`, `mock_codex.py`) that return valid structured responses
 - These mocks read from stdin and output formatted markdown to stdout
 

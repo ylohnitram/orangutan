@@ -274,7 +274,7 @@ def run_v01_pipeline(
 ```python
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="v0.1.0.0.0.0.0.0.0.0.0.0.0 multi-CLI agent orchestrator",
+        description="v0.1.0 multi-CLI agent orchestrator",
     )
     parser.add_argument(
         "--task",

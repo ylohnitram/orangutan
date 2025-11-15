@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-v0.1.0.0.0.0.0.0.0.0.0.0.0 multi-CLI agent orchestrator.
+v0.1.0 multi-CLI agent orchestrator.
 
-Responsibilities (per architecture spec, simplified for v0.1.0.0.0.0.0.0.0.0.0.0.0):
+Responsibilities (per architecture spec, simplified for v0.1.0):
 - Load agent definitions from agents/*.md files.
 - Initialize and maintain the TEAM MEMORY state object in memory.
 - Execute agents in a hardcoded sequence:
@@ -28,7 +28,7 @@ import yaml  # requires PyYAML
 
 
 # ---------------------------------------------------------------------------
-# Agent model and loader (lightweight inline version for v0.1.0.0.0.0.0.0.0.0.0.0.0)
+# Agent model and loader (lightweight inline version for v0.1.0)
 # ---------------------------------------------------------------------------
 
 
@@ -130,7 +130,7 @@ def load_all_agents(agents_dir: str) -> Dict[str, Agent]:
 
 
 # ---------------------------------------------------------------------------
-# TEAM MEMORY state management (minimal v0.1.0.0.0.0.0.0.0.0.0.0.0)
+# TEAM MEMORY state management (minimal v0.1.0)
 # ---------------------------------------------------------------------------
 
 
@@ -143,8 +143,8 @@ def initialize_state(task: str, workflow_rules_path: str) -> Dict[str, Any]:
     state = {
         "project_context": {
             "name": "multi-cli-agent-orchestrator",
-            "version": "v0.1.0.0.0.0.0.0.0.0.0.0.0",
-            "goal": "Build and run the v0.1.0.0.0.0.0.0.0.0.0.0.0 multi-CLI agent orchestration pipeline",
+            "version": "v0.1.0",
+            "goal": "Build and run the v0.1.0 multi-CLI agent orchestration pipeline",
             "current_task": <task>,
         },
         "agent_outputs": {
@@ -153,7 +153,7 @@ def initialize_state(task: str, workflow_rules_path: str) -> Dict[str, Any]:
         "workflow_rules": {
             "system": "orangutan",
             "loaded_from": <workflow_rules_path>,
-            "rules": [],  # v0.1.0.0.0.0.0.0.0.0.0.0.0 stub: rules not parsed/enforced
+            "rules": [],  # v0.1.0 stub: rules not parsed/enforced
         },
         "execution_history": [
             # {
@@ -168,8 +168,8 @@ def initialize_state(task: str, workflow_rules_path: str) -> Dict[str, Any]:
     state: Dict[str, Any] = {
         "project_context": {
             "name": "multi-cli-agent-orchestrator",
-            "version": "v0.1.0.0.0.0.0.0.0.0.0.0.0",
-            "goal": "Build and run the v0.1.0.0.0.0.0.0.0.0.0.0.0 multi-CLI agent orchestration pipeline",
+            "version": "v0.1.0",
+            "goal": "Build and run the v0.1.0 multi-CLI agent orchestration pipeline",
             "current_task": task,
         },
         "agent_outputs": {},
@@ -213,12 +213,22 @@ def execute_single_agent(agent: Agent, state: Dict[str, Any], task: str) -> None
     cmd = [agent.cli_command] + agent.cli_args
     started_at = datetime.utcnow().isoformat() + "Z"
 
+    # Ensure agent commands can access the same interpreter/venv as the orchestrator.
+    env = os.environ.copy()
+    python_dir = os.path.dirname(sys.executable)
+    if python_dir:
+        existing_path = env.get("PATH", "")
+        path_parts = existing_path.split(os.pathsep) if existing_path else []
+        if python_dir not in path_parts:
+            env["PATH"] = os.pathsep.join([python_dir, existing_path]) if existing_path else python_dir
+
     try:
         completed = subprocess.run(
             cmd,
             input=input_text,
             capture_output=True,
             text=True,
+            env=env,
             check=False,
         )
         success = completed.returncode == 0
@@ -259,7 +269,7 @@ def execute_single_agent(agent: Agent, state: Dict[str, Any], task: str) -> None
 
 def run_v01_pipeline(agents: Dict[str, Agent], state: Dict[str, Any], task: str) -> None:
     """
-    Run the hardcoded v0.1.0.0.0.0.0.0.0.0.0.0.0 pipeline.
+    Run the hardcoded v0.1.0 pipeline.
 
     For this round:
     analyst → architect → coder → devops → reviewer → release-manager
@@ -297,7 +307,7 @@ def save_state(state: Dict[str, Any], path: str) -> None:
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="v0.1.0.0.0.0.0.0.0.0.0.0.0 multi-CLI agent orchestrator",
+        description="v0.1.0 multi-CLI agent orchestrator",
     )
     parser.add_argument(
         "--task",
