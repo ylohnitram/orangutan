@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import signal
+import sys
 import threading
 import time
+from contextlib import nullcontext
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
@@ -394,14 +396,38 @@ class OrangutanConsole:
             print(message)
 
     def _run_agent(self, agent: Agent, state: Dict[str, Any], task: str) -> bool:
-        agent_success, stdout, stderr = execute_single_agent(
-            agent,
-            state,
-            task,
-            use_mock_clis=self.use_mock_clis,
-            verbose=False,
-            on_process_start=self._track_process,
+        label = (
+            f"{agent.name} – {STATUS_DESCRIPTIONS.get(agent.name, '').strip()}".strip(
+                " –"
+            )
         )
+        status_cm = (
+            self.console.status(f"[bold]{label}[/bold]")
+            if self.console
+            else nullcontext()
+        )
+        spinner_stop: Optional[threading.Event] = None
+        spinner_thread: Optional[threading.Thread] = None
+        if not self.console:
+            spinner_stop = threading.Event()
+            spinner_thread = threading.Thread(
+                target=self._spinner_loop,
+                args=(label, spinner_stop),
+                daemon=True,
+            )
+            spinner_thread.start()
+        with status_cm:
+            agent_success, stdout, stderr = execute_single_agent(
+                agent,
+                state,
+                task,
+                use_mock_clis=self.use_mock_clis,
+                verbose=False,
+                on_process_start=self._track_process,
+            )
+        if spinner_stop and spinner_thread:
+            spinner_stop.set()
+            spinner_thread.join()
         summary_lines = self._prepare_summary(agent.name, stdout)
         icon = "✅" if agent_success else "❌"
         if self.console:
@@ -461,6 +487,21 @@ class OrangutanConsole:
         if fallback:
             return [f"- {text}" for text in fallback]
         return ["- Completed the step."]
+
+    @staticmethod
+    def _spinner_loop(label: str, stop_event: threading.Event) -> None:
+        frames = "|/-\\"
+        message = f"[RUN ] {label} "
+        idx = 0
+        while not stop_event.is_set():
+            frame = frames[idx % len(frames)]
+            idx += 1
+            sys.stdout.write(f"\r{message}{frame}")
+            sys.stdout.flush()
+            if stop_event.wait(0.15):
+                break
+        sys.stdout.write("\r" + " " * (len(message) + 2) + "\r")
+        sys.stdout.flush()
 
     @staticmethod
     def _extract_summary_lines(lines: List[str]) -> List[str]:
