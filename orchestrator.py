@@ -46,13 +46,11 @@ TOOL_WRAPPER_CONFIG: Dict[str, Dict[str, Any]] = {
     },
     "claude": {
         "cmd": ["--cmd", "claude", "--cmd", "chat"],
-        "prompt_mode": "flag",
-        "prompt_flag": "--message",
+        "prompt_mode": "stdin",
     },
     "codex": {
         "cmd": ["--cmd", "codex", "--cmd", "prompt"],
-        "prompt_mode": "flag",
-        "prompt_flag": "--text",
+        "prompt_mode": "stdin",
     },
 }
 PIPELINE_V01: List[str] = [
