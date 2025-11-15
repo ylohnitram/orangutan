@@ -16,6 +16,7 @@
 - `make run-ui-real` — launches the same interactive CLI but forwards requests to the real CLIs; ensure all tools are installed and authenticated first.
 - `make clean` — deletes `.venv` and transient state files when a fresh run is needed.
 - Pass `--use-mock-clis` to `orchestrator.py` when invoking it directly to pin execution to the bundled mock scripts; omit the flag to hit the real CLIs defined in `agents/*.md`.
+- Real CLI executions use `wrappers/run_llm_cli.py`, which turns the orchestrator payload into a textual prompt and executes the configured CLI (`gemini`, `claude`, `codex`). Adjust the command/flags in frontmatter if your local CLI expects different arguments.
 
 ## Coding Style & Naming Conventions
 - Target Python 3.11+, 4-space indentation, and full type hints. Dataclasses suit shared models; keep the existing ruler-comment sections.

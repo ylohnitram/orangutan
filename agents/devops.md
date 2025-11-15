@@ -1,9 +1,18 @@
 ---
 name: devops
-cli_command: codex
+cli_command: python
 cli_args:
+  - wrappers/run_llm_cli.py
+  - --cmd
+  - codex
+  - --cmd
+  - prompt
   - --model
   - gpt-5.1-codex
+  - --prompt-mode
+  - flag
+  - --prompt-flag
+  - --text
 role_prompt: |
   You are the DEVOPS agent.
   For v0.1.0 you provide lightweight operational guidance:

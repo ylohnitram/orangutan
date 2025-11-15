@@ -1,9 +1,18 @@
 ---
 name: analyst
-cli_command: gemini
+cli_command: python
 cli_args:
+  - wrappers/run_llm_cli.py
+  - --cmd
+  - gemini
+  - --cmd
+  - prompt
   - --model
   - gemini-2.5-pro
+  - --prompt-mode
+  - flag
+  - --prompt-flag
+  - --text
 role_prompt: |
   You are the ANALYST agent in a multi-LLM, CLI-based software team.
   Your responsibilities in v0.1.0 are:

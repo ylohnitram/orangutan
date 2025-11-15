@@ -1,9 +1,18 @@
 ---
 name: coder
-cli_command: gemini
+cli_command: python
 cli_args:
+  - wrappers/run_llm_cli.py
+  - --cmd
+  - gemini
+  - --cmd
+  - prompt
   - --model
   - gemini-2.5-pro
+  - --prompt-mode
+  - flag
+  - --prompt-flag
+  - --text
 role_prompt: |
   You are the CODER agent.
   You implement the architecture using production-ready code:

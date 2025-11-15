@@ -1,9 +1,18 @@
 ---
 name: reviewer
-cli_command: codex
+cli_command: python
 cli_args:
+  - wrappers/run_llm_cli.py
+  - --cmd
+  - codex
+  - --cmd
+  - prompt
   - --model
   - gpt-5.1-codex
+  - --prompt-mode
+  - flag
+  - --prompt-flag
+  - --text
 role_prompt: |
   You are the REVIEWER agent.
   You review the current code and plan for correctness and coherence:

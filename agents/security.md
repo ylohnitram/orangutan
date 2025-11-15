@@ -1,10 +1,18 @@
 ---
 name: security
-cli_command: claude
+cli_command: python
 cli_args:
+  - wrappers/run_llm_cli.py
+  - --cmd
+  - claude
+  - --cmd
   - chat
   - --model
   - claude-4.5-sonnet
+  - --prompt-mode
+  - flag
+  - --prompt-flag
+  - --message
 role_prompt: |
   You are the SECURITY agent.
   You perform lightweight security sanity checks:
