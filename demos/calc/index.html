@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Demos – Kalkulačka</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="calculator" aria-label="Webová kalkulačka">
+      <header>
+        <h1>Demo kalkulačka</h1>
+        <p>Jednoduchá ukázková aplikace s HTML, CSS a JavaScriptem.</p>
+      </header>
+      <section class="display" aria-live="polite">
+        <output id="sub-display" class="sub-display" aria-label="Poslední zadání">0</output>
+        <output id="main-display" class="main-display" aria-label="Aktuální výsledek">0</output>
+        <div id="status" class="status" role="status" aria-live="assertive"></div>
+      </section>
+      <section class="keypad" aria-label="Klávesnice kalkulačky">
+        <button data-type="action" data-action="clear" class="btn btn--action">C</button>
+        <button data-type="action" data-action="delete" class="btn btn--action">DEL</button>
+        <button data-type="operator" data-value="%" class="btn btn--operator">%</button>
+        <button data-type="operator" data-value="/" class="btn btn--operator">÷</button>
+
+        <button data-type="digit" data-value="7" class="btn btn--digit">7</button>
+        <button data-type="digit" data-value="8" class="btn btn--digit">8</button>
+        <button data-type="digit" data-value="9" class="btn btn--digit">9</button>
+        <button data-type="operator" data-value="*" class="btn btn--operator">×</button>
+
+        <button data-type="digit" data-value="4" class="btn btn--digit">4</button>
+        <button data-type="digit" data-value="5" class="btn btn--digit">5</button>
+        <button data-type="digit" data-value="6" class="btn btn--digit">6</button>
+        <button data-type="operator" data-value="-" class="btn btn--operator">−</button>
+
+        <button data-type="digit" data-value="1" class="btn btn--digit">1</button>
+        <button data-type="digit" data-value="2" class="btn btn--digit">2</button>
+        <button data-type="digit" data-value="3" class="btn btn--digit">3</button>
+        <button data-type="operator" data-value="+" class="btn btn--operator">+</button>
+
+        <button data-type="action" data-action="invert" class="btn btn--action">±</button>
+        <button data-type="digit" data-value="0" class="btn btn--digit btn--span-two">0</button>
+        <button data-type="digit" data-value="." class="btn btn--digit">,</button>
+        <button data-type="action" data-action="equals" class="btn btn--equals">=</button>
+      </section>
+    </main>
+    <script src="script.js" defer></script>
+  </body>
+</html>

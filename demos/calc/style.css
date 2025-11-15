@@ -1,0 +1,147 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --primary: #58a6ff;
+  --accent: #f778ba;
+  --text: #f0f6fc;
+  --muted: #8b949e;
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, #202938, #0d1117 65%);
+  color: var(--text);
+}
+
+main {
+  width: min(420px, 90vw);
+}
+
+.calculator {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.calculator header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.calculator header p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.display {
+  background: #0b1528;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #1e2a44;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sub-display {
+  text-align: right;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.main-display {
+  text-align: right;
+  font-size: 2.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.status {
+  min-height: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+button.btn {
+  padding: 0.9rem;
+  border-radius: 0.9rem;
+  border: 1px solid transparent;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.1s ease, background 0.2s ease;
+  color: var(--text);
+}
+
+button.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn--digit {
+  background: #1b263b;
+}
+
+.btn--operator {
+  background: #132235;
+  border-color: rgba(88, 166, 255, 0.5);
+}
+
+.btn--action {
+  background: #2a1b3d;
+  border-color: rgba(247, 120, 186, 0.4);
+}
+
+.btn--equals {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #050608;
+  font-weight: 700;
+}
+
+.btn--span-two {
+  grid-column: span 2;
+}
+
+button.btn:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 540px) {
+  .calculator {
+    padding: 1rem;
+  }
+
+  .main-display {
+    font-size: 2.2rem;
+  }
+
+  .btn--digit,
+  .btn--operator,
+  .btn--action {
+    font-size: 1rem;
+  }
+}
