@@ -26,6 +26,17 @@ from typing import Any, Dict, List, Optional
 
 import yaml  # requires PyYAML
 
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+MOCK_AGENT_SCRIPTS: Dict[str, str] = {
+    "analyst": "mock_gemini.py",
+    "architect": "mock_claude.py",
+    "coder": "mock_codex.py",
+    "devops": "mock_claude.py",
+    "reviewer": "mock_codex.py",
+    "release-manager": "mock_gemini.py",
+    "security": "mock_claude.py",
+}
+
 
 # ---------------------------------------------------------------------------
 # Agent model and loader (lightweight inline version for v0.1.0)
@@ -35,6 +46,7 @@ import yaml  # requires PyYAML
 @dataclass
 class Agent:
     """In-memory representation of an agent definition."""
+
     name: str
     cli_command: str
     cli_args: List[str]
@@ -129,6 +141,20 @@ def load_all_agents(agents_dir: str) -> Dict[str, Agent]:
     return agents
 
 
+def build_agent_command(agent: Agent, use_mock_clis: bool) -> List[str]:
+    """Return the subprocess command for an agent."""
+    if use_mock_clis:
+        script = MOCK_AGENT_SCRIPTS.get(agent.name)
+        if script:
+            script_path = os.path.join(REPO_ROOT, script)
+            return [sys.executable, script_path]
+
+    cmd = [agent.cli_command] + agent.cli_args
+    if agent.cli_command in {"python", "python3"}:
+        cmd = [sys.executable] + agent.cli_args
+    return cmd
+
+
 # ---------------------------------------------------------------------------
 # TEAM MEMORY state management (minimal v0.1.0)
 # ---------------------------------------------------------------------------
@@ -188,7 +214,12 @@ def initialize_state(task: str, workflow_rules_path: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def execute_single_agent(agent: Agent, state: Dict[str, Any], task: str) -> None:
+def execute_single_agent(
+    agent: Agent,
+    state: Dict[str, Any],
+    task: str,
+    use_mock_clis: bool = False,
+) -> None:
     """
     Execute one agent via subprocess and update TEAM MEMORY.
 
@@ -197,6 +228,7 @@ def execute_single_agent(agent: Agent, state: Dict[str, Any], task: str) -> None
     - Captures stdout/stderr and return code.
     - Logs basic info to stdout / stderr.
     - Stores the raw stdout as agent_outputs[agent.name]["summary"].
+    - When use_mock_clis is True, swap CLI execution to mock_* scripts.
 
     TODO:
     - In a later version, parse structured sections (SUMMARY/ARTIFACTS/NEXT_ACTION).
@@ -210,7 +242,7 @@ def execute_single_agent(agent: Agent, state: Dict[str, Any], task: str) -> None
     }
     input_text = json.dumps(payload, indent=2)
 
-    cmd = [agent.cli_command] + agent.cli_args
+    cmd = build_agent_command(agent, use_mock_clis)
     started_at = datetime.utcnow().isoformat() + "Z"
 
     # Ensure agent commands can access the same interpreter/venv as the orchestrator.
@@ -220,7 +252,11 @@ def execute_single_agent(agent: Agent, state: Dict[str, Any], task: str) -> None
         existing_path = env.get("PATH", "")
         path_parts = existing_path.split(os.pathsep) if existing_path else []
         if python_dir not in path_parts:
-            env["PATH"] = os.pathsep.join([python_dir, existing_path]) if existing_path else python_dir
+            env["PATH"] = (
+                os.pathsep.join([python_dir, existing_path])
+                if existing_path
+                else python_dir
+            )
 
     try:
         completed = subprocess.run(
@@ -252,7 +288,7 @@ def execute_single_agent(agent: Agent, state: Dict[str, Any], task: str) -> None
     # Minimal state update: store raw output as summary
     state["agent_outputs"][agent.name] = {
         "summary": stdout,
-        "artifacts": {},    # Reserved for future structured parsing
+        "artifacts": {},  # Reserved for future structured parsing
         "next_action": "",  # Reserved for future NEXT_ACTION parsing
     }
 
@@ -267,7 +303,12 @@ def execute_single_agent(agent: Agent, state: Dict[str, Any], task: str) -> None
     )
 
 
-def run_v01_pipeline(agents: Dict[str, Agent], state: Dict[str, Any], task: str) -> None:
+def run_v01_pipeline(
+    agents: Dict[str, Agent],
+    state: Dict[str, Any],
+    task: str,
+    use_mock_clis: bool = False,
+) -> None:
     """
     Run the hardcoded v0.1.0 pipeline.
 
@@ -291,7 +332,7 @@ def run_v01_pipeline(agents: Dict[str, Agent], state: Dict[str, Any], task: str)
                 file=sys.stderr,
             )
             continue
-        execute_single_agent(agent, state, task)
+        execute_single_agent(agent, state, task, use_mock_clis=use_mock_clis)
 
 
 def save_state(state: Dict[str, Any], path: str) -> None:
@@ -329,6 +370,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default="state.json",
         help="Path to write final TEAM MEMORY state as JSON.",
     )
+    parser.add_argument(
+        "--use-mock-clis",
+        action="store_true",
+        help="Use the bundled mock_* scripts instead of the configured CLI commands.",
+    )
     return parser.parse_args(argv)
 
 
@@ -349,7 +395,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     state = initialize_state(args.task, args.workflow_rules)
-    run_v01_pipeline(agents, state, args.task)
+    run_v01_pipeline(agents, state, args.task, use_mock_clis=args.use_mock_clis)
     save_state(state, args.state_path)
     print(f"[orchestrator] Saved TEAM MEMORY state to {args.state_path}")
     return 0

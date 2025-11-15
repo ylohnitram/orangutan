@@ -1,8 +1,9 @@
 ---
 name: devops
-cli_command: python
+cli_command: q
 cli_args:
-  - mock_claude.py
+  - dev
+  - chat
 role_prompt: |
   You are the DEVOPS agent.
   For v0.1.0 you provide lightweight operational guidance:

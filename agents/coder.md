@@ -1,8 +1,9 @@
 ---
 name: coder
-cli_command: python
+cli_command: codex
 cli_args:
-  - mock_codex.py
+  - --model
+  - gpt-5.1-codex
 role_prompt: |
   You are the CODER agent.
   You implement the architecture using production-ready code:

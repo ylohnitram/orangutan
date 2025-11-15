@@ -12,10 +12,10 @@
 
 PYTHON ?= python3
 VENV_DIR ?= .venv
-PIP := $(VENV_DIR)/bin/pip
 PYTHON_VENV := $(VENV_DIR)/bin/python
+PIP := $(PYTHON_VENV) -m pip
 
-.PHONY: venv install run-pipeline run-pipeline-ci clean
+.PHONY: venv install run-pipeline run-pipeline-ci run-pipeline-real clean
 
 venv:
 	$(PYTHON) -m venv $(VENV_DIR)
@@ -28,13 +28,21 @@ install: venv requirements.txt
 run-pipeline: install
 	$(PYTHON_VENV) orchestrator.py \
 		--task "DevOps local smoke test for FlowLint multi-CLI orchestrator" \
-		--state-path state-local.json
+		--state-path state-local.json \
+		--use-mock-clis
 
 # CI-focused pipeline run (can also be used locally)
 run-pipeline-ci: install
 	$(PYTHON_VENV) orchestrator.py \
 		--task "DevOps CI smoke test for FlowLint multi-CLI orchestrator" \
-		--state-path state-ci.json
+		--state-path state-ci.json \
+		--use-mock-clis
+
+# Real CLI run (requires q, gemini, codex, claude CLIs to be installed locally)
+run-pipeline-real: install
+	$(PYTHON_VENV) orchestrator.py \
+		--task "FlowLint orchestrator real CLI pipeline run" \
+		--state-path state-real.json
 
 clean:
-	rm -rf $(VENV_DIR) state-local.json state-ci.json state.json
+	rm -rf $(VENV_DIR) state-local.json state-ci.json state-real.json state.json

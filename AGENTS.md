@@ -9,9 +9,11 @@
 ## Build, Test, and Development Commands
 - `make VENV_DIR=/home/$USER/.venvs/orangutan install` — preferred WSL invocation; creates a venv under the Linux filesystem, upgrades `pip`, and installs `requirements.txt`.
 - `make install` — default target for non-WSL setups; creates `.venv`, upgrades `pip`, and installs `requirements.txt` (PyYAML only).
-- `make run-pipeline` — runs the orchestration loop locally with `state-local.json`; fastest way to smoke test a change.
-- `make run-pipeline-ci` — mirrors the CI task definition, writing `state-ci.json`; use it before opening a PR.
+- `make run-pipeline` — runs the orchestration loop locally with `state-local.json` using the bundled mock CLIs; fastest way to smoke test a change without hitting external LLMs.
+- `make run-pipeline-real` — executes the same pipeline but calls the real `q`, `gemini`, `codex`, and `claude` CLIs, writing `state-real.json`; requires those tools to be installed and authenticated.
+- `make run-pipeline-ci` — mirrors the CI task definition, writing `state-ci.json`, and also uses the mock CLIs for deterministic results; use it before opening a PR.
 - `make clean` — deletes `.venv` and transient state files when a fresh run is needed.
+- Pass `--use-mock-clis` to `orchestrator.py` when invoking it directly to pin execution to the bundled mock scripts; omit the flag to hit the real CLIs defined in `agents/*.md`.
 
 ## Coding Style & Naming Conventions
 - Target Python 3.11+, 4-space indentation, and full type hints. Dataclasses suit shared models; keep the existing ruler-comment sections.

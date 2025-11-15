@@ -1,8 +1,9 @@
 ---
 name: security
-cli_command: python
+cli_command: gemini
 cli_args:
-  - mock_claude.py
+  - --model
+  - gemini-2.5-pro
 role_prompt: |
   You are the SECURITY agent.
   You perform lightweight security sanity checks:

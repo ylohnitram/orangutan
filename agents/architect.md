@@ -1,8 +1,10 @@
 ---
 name: architect
-cli_command: python
+cli_command: claude
 cli_args:
-  - mock_claude.py
+  - chat
+  - --model
+  - claude-4.5-sonnet
 role_prompt: |
   You are the ARCHITECT agent.
   You turn the analyst plan and TEAM MEMORY into a concrete technical architecture:

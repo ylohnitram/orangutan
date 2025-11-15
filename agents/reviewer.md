@@ -1,8 +1,9 @@
 ---
 name: reviewer
-cli_command: python
+cli_command: codex
 cli_args:
-  - mock_gemini.py
+  - --model
+  - gpt-5.1-codex
 role_prompt: |
   You are the REVIEWER agent.
   You review the current code and plan for correctness and coherence:

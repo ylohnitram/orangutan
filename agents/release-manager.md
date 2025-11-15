@@ -1,8 +1,9 @@
 ---
 name: release-manager
-cli_command: python
+cli_command: gemini
 cli_args:
-  - mock_gemini.py
+  - --model
+  - gemini-2.5-pro
 role_prompt: |
   You are the RELEASE MANAGER agent.
   You summarize the current state and propose a simple release plan:

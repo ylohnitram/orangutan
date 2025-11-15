@@ -1,8 +1,9 @@
 ---
 name: analyst
-cli_command: python
+cli_command: gemini
 cli_args:
-  - mock_gemini.py
+  - --model
+  - gemini-2.5-pro
 role_prompt: |
   You are the ANALYST agent in a multi-LLM, CLI-based software team.
   Your responsibilities in v0.1.0 are:
