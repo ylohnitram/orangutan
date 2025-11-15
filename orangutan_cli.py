@@ -262,9 +262,11 @@ class OrangutanConsole:
             if self.cancel_event.is_set() or self.shutdown_event.is_set():
                 return False, None
             self._render_status_table(statuses, current=name)
+            self._log_agent_status(name, "running")
             agent_success = self._run_agent(agent, state, task)
             statuses[name] = "success" if agent_success else "failed"
             self._render_status_table(statuses)
+            self._log_agent_status(name, statuses[name])
             if not agent_success:
                 return False, idx
         return True, None
@@ -334,6 +336,25 @@ class OrangutanConsole:
             }.get(status, status)
             table.add_row(name, icon)
         self.console.print(table)
+
+    def _log_agent_status(self, name: str, status: str) -> None:
+        label = {
+            "running": "[RUN ]",
+            "success": "[ OK ]",
+            "failed": "[FAIL]",
+            "pending": "[....]",
+        }.get(status, status)
+        message = f"{label} {name}"
+        if status == "running":
+            message += " – working…"
+        elif status == "success":
+            message += " – done."
+        elif status == "failed":
+            message += " – failed."
+        if self.console:
+            self.console.print(message)
+        else:
+            print(message)
 
     def _run_agent(self, agent: Agent, state: Dict[str, Any], task: str) -> bool:
         agent_success, stdout, stderr = execute_single_agent(
