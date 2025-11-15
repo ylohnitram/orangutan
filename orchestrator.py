@@ -18,6 +18,7 @@ NOTE:
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -425,11 +426,16 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=False,
         help="Permit running even when checked out on main/master (not recommended).",
     )
+    parser.add_argument(
+        "--no-auto-create-branch",
+        action="store_true",
+        help="Disable automatic feature branch creation when invoked from main/master.",
+    )
     return parser.parse_args(argv)
 
 
-def ensure_feature_branch() -> None:
-    """Exit with error if the current git branch is main/master."""
+def ensure_feature_branch(task: str, auto_create: bool, allow_main: bool) -> None:
+    """Exit with error or create a new feature branch when on main/master."""
     try:
         completed = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
@@ -440,12 +446,37 @@ def ensure_feature_branch() -> None:
     except Exception:
         return
     branch = completed.stdout.strip()
-    if branch in {"main", "master"}:
+    if branch not in {"main", "master"}:
+        return
+    if allow_main:
+        return
+    if not auto_create:
         raise RuntimeError(
             "Current branch is '"
             + branch
             + "'. Create and switch to a feature branch before running the pipeline."
         )
+
+    target_branch = generate_feature_branch_name(task)
+    try:
+        subprocess.run(
+            ["git", "checkout", "-b", target_branch],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"Failed to create feature branch '{target_branch}': {exc.stderr or exc.stdout}"
+        ) from exc
+    print(f"[orchestrator] Created and switched to feature branch '{target_branch}'.")
+
+
+def generate_feature_branch_name(task: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", task.lower()).strip("-")
+    slug = slug[:30] if slug else "task"
+    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    return f"feature/{slug}-{timestamp}"
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -464,12 +495,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         return 1
 
-    if not args.allow_main_branch:
-        try:
-            ensure_feature_branch()
-        except RuntimeError as branch_error:
-            print(f"[orchestrator] ERROR: {branch_error}", file=sys.stderr)
-            return 1
+    try:
+        ensure_feature_branch(
+            args.task,
+            auto_create=not args.no_auto_create_branch,
+            allow_main=args.allow_main_branch,
+        )
+    except RuntimeError as branch_error:
+        print(f"[orchestrator] ERROR: {branch_error}", file=sys.stderr)
+        return 1
 
     state = initialize_state(args.task, args.workflow_rules)
     pipeline_success, failed_index = run_v01_pipeline(
