@@ -1,6 +1,6 @@
 name: architect
-tool: claude
-model: Sonnet
+tool: codex
+model: gpt-5.1-codex
 workflow_rules:
   - workflow-rules/core-orangutan.md
 role_prompt: |
