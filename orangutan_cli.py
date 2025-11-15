@@ -209,6 +209,8 @@ class OrangutanConsole:
             start_index = failed_index
             if attempt < self.max_retries:
                 print(f"[orangutan] Retrying from agent {PIPELINE_V01[start_index]}…")
+                self.cancel_event.clear()
+                self.shutdown_event.clear()
         return False
 
     def _run_pipeline_once(
@@ -351,7 +353,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--retries",
         type=int,
-        default=2,
+        default=3,
         help="Maximum number of attempts when a pipeline run fails.",
     )
     parser.add_argument(
