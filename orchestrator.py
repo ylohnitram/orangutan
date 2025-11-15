@@ -350,20 +350,20 @@ def run_v01_pipeline(
         Callable[[str, bool, str, str, Dict[str, Any]], None]
     ] = None,
     on_process_start: Optional[Callable[[Optional[subprocess.Popen]], None]] = None,
-) -> bool:
+    start_index: int = 0,
+) -> Tuple[bool, Optional[int]]:
     """
-    Run the hardcoded v0.1.0 pipeline and return True if all agents succeeded.
+    Run the hardcoded v0.1.0 pipeline and return (success, failed_agent_index).
     """
-    overall_success = True
-    for name in PIPELINE_V01:
+    for idx in range(start_index, len(PIPELINE_V01)):
+        name = PIPELINE_V01[idx]
         agent = agents.get(name)
         if not agent:
             print(
                 f"[orchestrator] WARNING: Agent '{name}' not found; skipping",
                 file=sys.stderr,
             )
-            overall_success = False
-            continue
+            return False, idx
         success, stdout, stderr = execute_single_agent(
             agent,
             state,
@@ -375,8 +375,8 @@ def run_v01_pipeline(
         if progress_callback:
             progress_callback(agent.name, success, stdout, stderr, state)
         if not success:
-            overall_success = False
-    return overall_success
+            return False, idx
+    return True, None
 
 
 def save_state(state: Dict[str, Any], path: str) -> None:
@@ -439,7 +439,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     state = initialize_state(args.task, args.workflow_rules)
-    pipeline_success = run_v01_pipeline(
+    pipeline_success, failed_index = run_v01_pipeline(
         agents,
         state,
         args.task,
@@ -448,10 +448,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     save_state(state, args.state_path)
     print(f"[orchestrator] Saved TEAM MEMORY state to {args.state_path}")
     if not pipeline_success:
-        print(
-            "[orchestrator] Completed with at least one agent failure",
-            file=sys.stderr,
-        )
+        if failed_index is not None:
+            failed_agent = PIPELINE_V01[failed_index]
+            print(
+                f"[orchestrator] Failed while executing agent '{failed_agent}'",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "[orchestrator] Completed with at least one agent failure",
+                file=sys.stderr,
+            )
         return 1
     return 0
 

@@ -7,7 +7,7 @@ import argparse
 import signal
 import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from orchestrator import (
     PIPELINE_V01,
@@ -180,35 +180,56 @@ class OrangutanConsole:
         self.cancel_event.clear()
 
     def _run_with_retries(self, task: str) -> bool:
+        state = initialize_state(task, self.workflow_rules)
+        if self.custom_flow_note:
+            state["project_context"]["custom_flow"] = self.custom_flow_note
+        start_index = 0
         for attempt in range(1, self.max_retries + 1):
             if self.shutdown_event.is_set() or self.cancel_event.is_set():
                 return False
-            print(f"[orangutan] Attempt {attempt}/{self.max_retries}")
-            state = initialize_state(task, self.workflow_rules)
-            if self.custom_flow_note:
-                state["project_context"]["custom_flow"] = self.custom_flow_note
-            attempt_failed = not self._run_pipeline_once(task, state)
-            if not attempt_failed:
+            attempt_label = (
+                f"[orangutan] Attempt {attempt}/{self.max_retries}"
+                if start_index == 0
+                else f"[orangutan] Attempt {attempt}/{self.max_retries} (resuming at {PIPELINE_V01[start_index]})"
+            )
+            print(attempt_label)
+            success, failed_index = self._run_pipeline_once(
+                task,
+                state,
+                start_index=start_index,
+            )
+            if success:
                 return True
-            if attempt < self.max_retries and not self.cancel_event.is_set():
-                print("[orangutan] Retrying task…")
+            if (
+                failed_index is None
+                or self.cancel_event.is_set()
+                or self.shutdown_event.is_set()
+            ):
+                return False
+            start_index = failed_index
+            if attempt < self.max_retries:
+                print(f"[orangutan] Retrying from agent {PIPELINE_V01[start_index]}…")
         return False
 
-    def _run_pipeline_once(self, task: str, state: Dict[str, Any]) -> bool:
-        success = True
-        for name in PIPELINE_V01:
+    def _run_pipeline_once(
+        self,
+        task: str,
+        state: Dict[str, Any],
+        *,
+        start_index: int = 0,
+    ) -> Tuple[bool, Optional[int]]:
+        for idx in range(start_index, len(PIPELINE_V01)):
+            name = PIPELINE_V01[idx]
             agent = self.agents.get(name)
             if not agent:
                 print(f"[orangutan] Missing agent '{name}', skipping.")
-                success = False
-                continue
+                return False, idx
             if self.cancel_event.is_set() or self.shutdown_event.is_set():
-                return False
+                return False, None
             agent_success = self._run_agent(agent, state, task)
             if not agent_success:
-                success = False
-                break
-        return success
+                return False, idx
+        return True, None
 
     def _render_scenario(self) -> None:
         print("[orangutan] Scenario overview:")
@@ -264,8 +285,39 @@ class OrangutanConsole:
 
     @staticmethod
     def _summarize_output(stdout: str) -> List[str]:
-        lines = [line.strip() for line in (stdout or "").splitlines() if line.strip()]
-        return lines[:3] or ["<no output>"]
+        lines = (stdout or "").splitlines()
+        summary = OrangutanConsole._extract_summary_lines(lines)
+        formatted: List[str] = []
+        for line in summary:
+            clean = line.strip().lstrip("-*• ").strip()
+            if not clean:
+                continue
+            formatted.append(f"- {clean}")
+            if len(formatted) == 3:
+                break
+        return formatted or ["<no output>"]
+
+    @staticmethod
+    def _extract_summary_lines(lines: List[str]) -> List[str]:
+        collected: List[str] = []
+        capture = False
+        for raw in lines:
+            line = raw.strip()
+            if not line:
+                if capture and collected:
+                    break
+                continue
+            if line.startswith("## "):
+                if line.upper().startswith("## SUMMARY"):
+                    capture = True
+                    continue
+                if capture:
+                    break
+            if capture:
+                collected.append(line)
+        if not collected:
+            collected = [ln for ln in (ln.strip() for ln in lines) if ln]
+        return collected
 
     @staticmethod
     def _spinner(label: str, stop_event: threading.Event) -> None:
