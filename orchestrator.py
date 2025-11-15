@@ -65,6 +65,21 @@ PIPELINE_V01: List[str] = [
     "release-manager",
 ]
 
+HEURISTIC_PIPELINES: List[Tuple[List[str], List[str]]] = [
+    (
+        ["branch", "workflow"],
+        ["orchestrator", "devops", "reviewer", "release-manager"],
+    ),
+    (
+        ["pull request"],
+        ["orchestrator", "devops", "reviewer", "release-manager"],
+    ),
+    (
+        ["process"],
+        ["orchestrator", "devops", "reviewer", "release-manager"],
+    ),
+]
+
 
 # ---------------------------------------------------------------------------
 # Agent model and loader (lightweight inline version for v0.1.0)
@@ -352,12 +367,14 @@ def run_v01_pipeline(
     ] = None,
     on_process_start: Optional[Callable[[Optional[subprocess.Popen]], None]] = None,
     start_index: int = 0,
+    pipeline: Optional[List[str]] = None,
 ) -> Tuple[bool, Optional[int]]:
     """
     Run the hardcoded v0.1.0 pipeline and return (success, failed_agent_index).
     """
-    for idx in range(start_index, len(PIPELINE_V01)):
-        name = PIPELINE_V01[idx]
+    sequence = pipeline or PIPELINE_V01
+    for idx in range(start_index, len(sequence)):
+        name = sequence[idx]
         agent = agents.get(name)
         if not agent:
             print(
@@ -479,6 +496,21 @@ def generate_feature_branch_name(task: str) -> str:
     return f"feature/{slug}-{timestamp}"
 
 
+def select_pipeline(task: str) -> List[str]:
+    lowered = task.lower()
+    for keywords, pipeline in HEURISTIC_PIPELINES:
+        if any(keyword in lowered for keyword in keywords):
+            return pipeline
+    return PIPELINE_V01
+
+
+def log_pipeline_choice(pipeline: List[str]) -> None:
+    if pipeline == PIPELINE_V01:
+        return
+    readable = " → ".join(pipeline)
+    print(f"[orchestrator] Adjusted workflow for this task: {readable}")
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
 
@@ -505,12 +537,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"[orchestrator] ERROR: {branch_error}", file=sys.stderr)
         return 1
 
+    pipeline = select_pipeline(args.task)
+    log_pipeline_choice(pipeline)
+
     state = initialize_state(args.task, args.workflow_rules)
     pipeline_success, failed_index = run_v01_pipeline(
         agents,
         state,
         args.task,
         use_mock_clis=args.use_mock_clis,
+        pipeline=pipeline,
     )
     save_state(state, args.state_path)
     print(f"[orchestrator] Saved TEAM MEMORY state to {args.state_path}")
