@@ -39,6 +39,40 @@ SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "release-manager": "summarizes readiness and next steps",
 }
 
+ROLE_SUMMARY_FALLBACKS: Dict[str, List[str]] = {
+    "orchestrator": [
+        "Re-evaluated the task and delegated work across the pipeline.",
+    ],
+    "analyst": [
+        "Clarified requirements and confirmed the scope for downstream agents.",
+    ],
+    "architect": [
+        "Outlined the technical approach, dependencies, and guardrails.",
+    ],
+    "coder": [
+        "Implemented or updated the necessary code artifacts for this task.",
+    ],
+    "devops": [
+        "Adjusted automation, branching, or release workflows as needed.",
+    ],
+    "reviewer": [
+        "Verified code quality and highlighted findings for the team.",
+    ],
+    "release-manager": [
+        "Summarized progress and shared the next release/merge steps.",
+    ],
+}
+
+STATUS_DESCRIPTIONS: Dict[str, str] = {
+    "orchestrator": "Coordinating the plan",
+    "analyst": "Shaping requirements",
+    "architect": "Designing the solution",
+    "coder": "Implementing changes",
+    "devops": "Tending automation",
+    "reviewer": "Reviewing quality",
+    "release-manager": "Reporting readiness",
+}
+
 
 class OrangutanConsole:
     """Minimal interactive shell for routing tasks through the orchestrator."""
@@ -344,9 +378,12 @@ class OrangutanConsole:
             "failed": "[FAIL]",
             "pending": "[....]",
         }.get(status, status)
+        desc = STATUS_DESCRIPTIONS.get(name, "")
         message = f"{label} {name}"
+        if desc:
+            message += f" – {desc}"
         if status == "running":
-            message += " – working…"
+            message += "…"
         elif status == "success":
             message += " – done."
         elif status == "failed":
@@ -365,7 +402,7 @@ class OrangutanConsole:
             verbose=False,
             on_process_start=self._track_process,
         )
-        summary_lines = self._summarize_output(stdout)
+        summary_lines = self._prepare_summary(agent.name, stdout)
         icon = "✅" if agent_success else "❌"
         if self.console:
             self.console.print(f"{icon} [bold]{agent.name}[/bold]")
@@ -389,21 +426,41 @@ class OrangutanConsole:
                 print(f"    error: {err_line}")
         return agent_success
 
-    @staticmethod
-    def _summarize_output(stdout: str) -> List[str]:
+    def _prepare_summary(self, agent_name: str, stdout: str) -> List[str]:
         lines = (stdout or "").splitlines()
-        summary = OrangutanConsole._extract_summary_lines(lines)
+        summary = self._extract_summary_lines(lines)
         formatted: List[str] = []
         for line in summary:
-            if line.strip().startswith("OpenAI Codex v"):
+            stripped = line.strip()
+            if stripped.lower().startswith("openai codex v"):
                 continue
-            clean = line.strip().lstrip("-*• ").strip()
+            if stripped.lower().startswith(("workdir:", "model:", "provider:")):
+                continue
+            clean = stripped.lstrip("-*• ").strip()
             if not clean:
                 continue
             formatted.append(f"- {clean}")
             if len(formatted) == 3:
                 break
-        return formatted or ["<no output>"]
+        if formatted:
+            return formatted
+
+        trimmed = [
+            line
+            for line in lines
+            if line
+            and not line.lower().startswith(
+                ("openai codex v", "workdir:", "model:", "provider:")
+            )
+        ]
+        fallback = ROLE_SUMMARY_FALLBACKS.get(agent_name.lower())
+        if trimmed:
+            formatted = [f"- {trimmed[0].strip()}"]
+            formatted.extend(fallback or [])
+            return formatted[:3]
+        if fallback:
+            return [f"- {text}" for text in fallback]
+        return ["- Completed the step."]
 
     @staticmethod
     def _extract_summary_lines(lines: List[str]) -> List[str]:
