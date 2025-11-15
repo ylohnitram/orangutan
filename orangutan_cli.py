@@ -9,8 +9,23 @@ import threading
 import time
 from typing import Any, Dict, List, Optional
 
-from orchestrator import (PIPELINE_V01, Agent, execute_single_agent,
-                          initialize_state, load_all_agents)
+from orchestrator import (
+    PIPELINE_V01,
+    Agent,
+    execute_single_agent,
+    initialize_state,
+    load_all_agents,
+)
+
+SCENARIO_DESCRIPTIONS: Dict[str, str] = {
+    "orchestrator": "coordinates the plan and delegates to each specialist",
+    "analyst": "clarifies requirements and constraints before build work",
+    "architect": "lays out the technical approach and module structure",
+    "coder": "implements code and artifacts per the plan",
+    "devops": "checks automation, environments, and runbooks",
+    "reviewer": "audits the work for quality and correctness",
+    "release-manager": "summarizes readiness and next steps",
+}
 
 
 class OrangutanConsole:
@@ -126,6 +141,7 @@ class OrangutanConsole:
             return
         self.cancel_event.clear()
         print(f"\n[orangutan] Dispatching: {task}")
+        self._render_scenario()
         success = self._run_with_retries(task)
         if success:
             print("[orangutan] ✅ Task completed successfully.\n")
@@ -164,6 +180,14 @@ class OrangutanConsole:
                 success = False
                 break
         return success
+
+    def _render_scenario(self) -> None:
+        print("[orangutan] Scenario overview:")
+        print(f"  Flow: {' → '.join(PIPELINE_V01)}")
+        for name in PIPELINE_V01:
+            desc = SCENARIO_DESCRIPTIONS.get(name)
+            if desc:
+                print(f"  - {name}: {desc}")
 
     def _run_agent(self, agent: Agent, state: Dict[str, Any], task: str) -> bool:
         label = f"[{agent.name}] working"
