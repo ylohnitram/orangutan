@@ -5,7 +5,7 @@
 
 ## WHAT’S_INCLUDED
 * **Orchestrator Script (`orchestrator.py`):** A Python script that serves as the v0.1.0 orchestrator.
-* **Agent Loading:** The orchestrator loads agent definitions (CLI commands, prompts) from `agents/*.md` files.
+* **Agent Loading:** The orchestrator loads agent definitions (CLI commands, prompts) from `agents/*.yaml` files.
 * **Hardcoded Pipeline:** The script executes a fixed, hardcoded sequence of agents: `analyst` → `architect` → `coder` → `devops` → `reviewer` → `release-manager`.
 * **State Management ("TEAM MEMORY"):** A "TEAM MEMORY" state object is initialized in memory, passed to each agent via `stdin`, and updated with their raw `stdout`.
 * **State Persistence:** The final TEAM MEMORY object is saved to a JSON file (e.g., `state-local.json` or `state-ci.json`) for debugging.
@@ -40,7 +40,7 @@
 * **Hardcoded Pipeline:** The agent execution sequence is static and defined in the `run_v01_pipeline` function. The orchestrator cannot yet make decisions about which agent to run next.
 * **Workflow Rules Not Enforced:** The orchestrator loads the *path* to the `core-orangutan.md` rules file, but the rules themselves are not parsed or enforced.
 * **Simplistic State:** The orchestrator only stores the raw `stdout` from an agent as its "summary". It does not parse structured output (like artifacts or "next action" commands).
-* **Incomplete Agent Roster:** The `security` agent (defined in `agents/security.md`) is not included in the hardcoded v0.1.0 pipeline.
+* **Incomplete Agent Roster:** The `security` agent (defined in `agents/security.yaml`) is not included in the hardcoded v0.1.0 pipeline.
 * **Minimal Error Handling:** If an agent subprocess fails, its error is logged, but the orchestrator simply proceeds to the next agent in the hardcoded sequence.
 
 ---

@@ -76,7 +76,7 @@ state = {
 ## ORCHESTRATOR_DESIGN
 
 **Responsibilities of orchestrator.py:**
-- Load agent definitions from `agents/*.md` files
+- Load agent definitions from `agents/*.yaml` files
 - Initialize and maintain the TEAM MEMORY state
 - Execute agents in hardcoded v0.1.0 sequence: architect → coder → devops → reviewer → release-manager
 - Run CLI tools as subprocesses based on agent frontmatter
@@ -139,11 +139,11 @@ state = {
 - Create empty Python files per FILE_STRUCTURE
 
 ### Task 2: Create agent definition files
-- Create `agents/architect.md` with frontmatter: `cli: {command: "gemini", args: []}`
-- Create `agents/coder.md` with frontmatter: `cli: {command: "claude", args: []}`
-- Create `agents/devops.md` with frontmatter: `cli: {command: "codex", args: []}`
-- Create `agents/reviewer.md` with frontmatter: `cli: {command: "gemini", args: []}`
-- Create `agents/release-manager.md` with frontmatter: `cli: {command: "claude", args: []}`
+- Create `agents/architect.yaml` with frontmatter: `cli: {command: "gemini", args: []}`
+- Create `agents/coder.yaml` with frontmatter: `cli: {command: "claude", args: []}`
+- Create `agents/devops.yaml` with frontmatter: `cli: {command: "codex", args: []}`
+- Create `agents/reviewer.yaml` with frontmatter: `cli: {command: "gemini", args: []}`
+- Create `agents/release-manager.yaml` with frontmatter: `cli: {command: "claude", args: []}`
 - Add role descriptions from spec to each file's body
 
 ### Task 3: Setup Python environment

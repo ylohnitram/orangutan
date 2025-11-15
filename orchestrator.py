@@ -3,7 +3,7 @@
 v0.1.0 multi-CLI agent orchestrator.
 
 Responsibilities (per architecture spec, simplified for v0.1.0):
-- Load agent definitions from agents/*.md files.
+- Load agent definitions from agents/*.yaml files.
 - Initialize and maintain the TEAM MEMORY state object in memory.
 - Execute agents in a hardcoded sequence:
     orchestrator → analyst → architect → coder → devops → reviewer → release-manager
@@ -27,6 +27,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import yaml  # requires PyYAML
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+WRAPPER_SCRIPT = os.path.join(REPO_ROOT, "wrappers", "run_llm_cli.py")
 MOCK_AGENT_SCRIPTS: Dict[str, str] = {
     "orchestrator": "mock_gemini.py",
     "analyst": "mock_gemini.py",
@@ -36,6 +37,23 @@ MOCK_AGENT_SCRIPTS: Dict[str, str] = {
     "reviewer": "mock_codex.py",
     "release-manager": "mock_gemini.py",
     "security": "mock_claude.py",
+}
+TOOL_WRAPPER_CONFIG: Dict[str, Dict[str, Any]] = {
+    "gemini": {
+        "cmd": ["--cmd", "gemini", "--cmd", "prompt"],
+        "prompt_mode": "flag",
+        "prompt_flag": "--text",
+    },
+    "claude": {
+        "cmd": ["--cmd", "claude", "--cmd", "chat"],
+        "prompt_mode": "flag",
+        "prompt_flag": "--message",
+    },
+    "codex": {
+        "cmd": ["--cmd", "codex", "--cmd", "prompt"],
+        "prompt_mode": "flag",
+        "prompt_flag": "--text",
+    },
 }
 PIPELINE_V01: List[str] = [
     "orchestrator",
@@ -58,72 +76,38 @@ class Agent:
     """In-memory representation of an agent definition."""
 
     name: str
-    cli_command: str
-    cli_args: List[str]
+    tool: str
+    model: str
     role_prompt: str
     workflow_rules: List[str]
 
 
-def parse_frontmatter_and_body(path: str):
-    """
-    Parse a markdown file with YAML frontmatter.
-
-    Expected format:
-
-    ---
-    name: agent-name
-    cli_command: python
-    cli_args:
-      - mock_tool.py
-    role_prompt: |
-      ...
-    workflow_rules:
-      - workflow-rules/core-orangutan.md
-    ---
-    # Markdown body ...
-
-    Returns:
-        (frontmatter: dict, body: str)
-    """
-    with open(path, "r", encoding="utf-8") as f:
-        text = f.read()
-
-    if not text.startswith("---"):
-        raise ValueError(f"No YAML frontmatter found in agent file: {path}")
-
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        raise ValueError(f"Incomplete YAML frontmatter in agent file: {path}")
-
-    yaml_text = parts[1]
-    body = parts[2].lstrip("\n")
-
-    frontmatter = yaml.safe_load(yaml_text) or {}
-    return frontmatter, body
-
-
 def load_agent(path: str) -> Agent:
-    """Load a single agent .md file into an Agent object."""
-    frontmatter, body = parse_frontmatter_and_body(path)
+    """Load a single agent .yaml file into an Agent object."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
 
-    name = frontmatter.get("name") or os.path.splitext(os.path.basename(path))[0]
-    cli_command = frontmatter.get("cli_command")
-    if not cli_command:
-        raise ValueError(f"Agent '{name}' missing 'cli_command' in {path}")
+    if not isinstance(data, dict):  # pragma: no cover - defensive path
+        raise TypeError(f"Agent file must define a mapping: {path}")
 
-    cli_args = frontmatter.get("cli_args") or []
-    if not isinstance(cli_args, list):
-        raise TypeError(f"'cli_args' for agent '{name}' must be a list")
+    name = data.get("name") or os.path.splitext(os.path.basename(path))[0]
+    tool = data.get("tool")
+    if not tool:
+        raise ValueError(f"Agent '{name}' missing 'tool' in {path}")
 
-    role_prompt = frontmatter.get("role_prompt") or body or ""
-    workflow_rules = frontmatter.get("workflow_rules") or []
+    model = data.get("model")
+    if not model:
+        raise ValueError(f"Agent '{name}' missing 'model' in {path}")
+
+    role_prompt = data.get("role_prompt") or data.get("prompt") or ""
+    workflow_rules = data.get("workflow_rules") or []
     if isinstance(workflow_rules, str):
         workflow_rules = [workflow_rules]
 
     return Agent(
         name=name,
-        cli_command=cli_command,
-        cli_args=cli_args,
+        tool=tool,
+        model=model,
         role_prompt=role_prompt.strip(),
         workflow_rules=workflow_rules,
     )
@@ -142,7 +126,7 @@ def load_all_agents(agents_dir: str) -> Dict[str, Agent]:
         raise FileNotFoundError(f"Agents directory not found: {agents_dir}")
 
     for entry in sorted(os.listdir(agents_dir)):
-        if not entry.endswith(".md"):
+        if not entry.endswith(".yaml"):
             continue
         path = os.path.join(agents_dir, entry)
         agent = load_agent(path)
@@ -159,9 +143,27 @@ def build_agent_command(agent: Agent, use_mock_clis: bool) -> List[str]:
             script_path = os.path.join(REPO_ROOT, script)
             return [sys.executable, script_path]
 
-    cmd = [agent.cli_command] + agent.cli_args
-    if agent.cli_command in {"python", "python3"}:
-        cmd = [sys.executable] + agent.cli_args
+    config = TOOL_WRAPPER_CONFIG.get(agent.tool)
+    if not config:
+        raise ValueError(f"No wrapper configuration for tool '{agent.tool}'")
+
+    cmd: List[str] = [sys.executable, WRAPPER_SCRIPT]
+    cmd.extend(config.get("cmd", []))
+    if agent.model:
+        cmd.extend(["--model", agent.model])
+
+    prompt_mode = config.get("prompt_mode", "stdin")
+    cmd.extend(["--prompt-mode", prompt_mode])
+    if prompt_mode == "flag":
+        prompt_flag = config.get("prompt_flag")
+        if not prompt_flag:
+            raise ValueError(
+                f"Tool '{agent.tool}' uses flag prompt mode but missing prompt_flag"
+            )
+        cmd.extend(["--prompt-flag", prompt_flag])
+
+    extra_args = config.get("extra_args") or []
+    cmd.extend(extra_args)
     return cmd
 
 

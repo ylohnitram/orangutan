@@ -105,7 +105,7 @@ Agent by měl:
 
 ---
 
-## 3. Defaultní SW dev tým – agenti (`agents/*.md`)
+## 3. Defaultní SW dev tým – agenti (`agents/*.yaml`)
 
 Níže jsou výchozí agenti.  
 Každý patří do samostatného souboru `agents/<name>.md`.
@@ -114,7 +114,7 @@ Každý patří do samostatného souboru `agents/<name>.md`.
 
 ---
 
-### 3.1 `agents/analyst.md`
+### 3.1 `agents/analyst.yaml`
 
 ```markdown
 ---
@@ -149,7 +149,7 @@ Key Practices:
 
 ---
 
-### 3.2 `agents/architect.md`
+### 3.2 `agents/architect.yaml`
 
 ```markdown
 ---
@@ -184,7 +184,7 @@ Key Practices:
 
 ---
 
-### 3.3 `agents/coder.md`
+### 3.3 `agents/coder.yaml`
 
 ```markdown
 ---
@@ -293,7 +293,7 @@ See `workflow-rules/core-orangutan.md` section 3 for complete templates and exam
 
 ---
 
-### 3.4 `agents/designer.md`
+### 3.4 `agents/designer.yaml`
 
 ```markdown
 ---
@@ -327,7 +327,7 @@ Key Practices:
 
 ---
 
-### 3.5 `agents/devops.md`
+### 3.5 `agents/devops.yaml`
 
 ```markdown
 ---
@@ -414,7 +414,7 @@ See `workflow-rules/core-orangutan.md` section 1 for detailed requirements.
 
 ---
 
-### 3.6 `agents/orchestrator.md`
+### 3.6 `agents/orchestrator.yaml`
 
 ```markdown
 ---
@@ -469,7 +469,7 @@ See `workflow-rules/core-orangutan.md` sections 1–5 (CRITICAL rules) for detai
 
 ---
 
-### 3.7 `agents/project-manager.md`
+### 3.7 `agents/project-manager.yaml`
 
 ```markdown
 ---
@@ -531,7 +531,7 @@ See `workflow-rules/core-orangutan.md` sections 2–4 for detailed templates and
 
 ---
 
-### 3.8 `agents/qa-engineer.md`
+### 3.8 `agents/qa-engineer.yaml`
 
 ```markdown
 ---
@@ -565,7 +565,7 @@ Key Practices:
 
 ---
 
-### 3.9 `agents/release-manager.md`
+### 3.9 `agents/release-manager.yaml`
 
 ```markdown
 ---
@@ -621,7 +621,7 @@ Your Merge Responsibilities:
 
 ---
 
-### 3.10 `agents/reviewer.md`
+### 3.10 `agents/reviewer.yaml`
 
 ```markdown
 ---
@@ -655,7 +655,7 @@ Key Practices:
 
 ---
 
-### 3.11 `agents/security.md`
+### 3.11 `agents/security.yaml`
 
 ```markdown
 ---
@@ -689,7 +689,7 @@ Key Practices:
 
 ---
 
-### 3.12 `agents/writer.md`
+### 3.12 `agents/writer.yaml`
 
 ```markdown
 ---
@@ -900,7 +900,7 @@ Mezi kroky lze vkládat smyčky podle `## DECISIONS` a `workflow-rules`
 ### Python orchestrátor (budoucí fáze)
 
 - `orchestrator.py`:
-  - načte `agents/*.md` (frontmatter + prompt),
+  - načte `agents/*.yaml` (frontmatter + prompt),
   - načte `workflow-rules/*.md`,
   - vytvoří a spravuje `state`,
   - spouští CLI podle `cli.command` / `cli.args`,

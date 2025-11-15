@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 - `orchestrator.py` is the single entrypoint and must keep the documented load → execute → persist flow from `ARCHITECTURE_v0.1.0.md`.
-- Agent prompts and CLI definitions live in `agents/*.md` with YAML front matter (`name`, `cli_command`, `cli_args`, `workflow_rules`); align prompts with `workflow-rules/core-orangutan.md`.
+- Agent prompts and CLI definitions live in `agents/*.yaml` (`name`, `tool`, `model`, `workflow_rules`, `role_prompt`); align prompts with `workflow-rules/core-orangutan.md`.
 - Product docs (`BACKLOG_v0.1.0.md`, `TODO.md`, `multi_agent_orchestrator_spec.md`) record intent—update them when behavior shifts.
 - Pipeline runs emit `state-*.json` for debugging only; never commit those artifacts.
 
@@ -15,7 +15,7 @@
 - `make run-ui` — launches the interactive orangutan CLI powered by mock agents so you can chat with the orchestrator agent locally.
 - `make run-ui-real` — launches the same interactive CLI but forwards requests to the real CLIs; ensure all tools are installed and authenticated first.
 - `make clean` — deletes `.venv` and transient state files when a fresh run is needed.
-- Pass `--use-mock-clis` to `orchestrator.py` when invoking it directly to pin execution to the bundled mock scripts; omit the flag to hit the real CLIs defined in `agents/*.md`.
+- Pass `--use-mock-clis` to `orchestrator.py` when invoking it directly to pin execution to the bundled mock scripts; omit the flag to hit the real CLIs defined in `agents/*.yaml`.
 - Real CLI executions use `wrappers/run_llm_cli.py`, which turns the orchestrator payload into a textual prompt and executes the configured CLI (`gemini`, `claude`, `codex`). Adjust the command/flags in frontmatter if your local CLI expects different arguments.
 
 ## Coding Style & Naming Conventions

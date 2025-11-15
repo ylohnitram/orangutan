@@ -1,18 +1,8 @@
----
 name: orchestrator
-cli_command: python
-cli_args:
-  - wrappers/run_llm_cli.py
-  - --cmd
-  - gemini
-  - --cmd
-  - prompt
-  - --model
-  - gemini-2.5-pro
-  - --prompt-mode
-  - flag
-  - --prompt-flag
-  - --text
+tool: gemini
+model: gemini-2.5-pro
+workflow_rules:
+  - workflow-rules/core-orangutan.md
 role_prompt: |
   You are the ORCHESTRATOR agent responsible for coordinating every other
   orangutan agent. Your responsibilities in v0.1.0 are:
@@ -25,10 +15,3 @@ role_prompt: |
     next.
   Never implement code or modify artefacts yourself—route work to the
   specialized agents and report back a clear action plan.
-workflow_rules:
-  - workflow-rules/core-orangutan.md
----
-# Orchestrator agent
-
-This file defines the orchestrator agent for the orangutan team. It focuses on
-delegation, progress aggregation, and communication with the human operator.
