@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import select
 import shlex
 import subprocess
 import sys
-from typing import Any, List
+from typing import Any, List, Tuple
 
 
 def read_payload() -> dict[str, Any]:
@@ -64,26 +66,90 @@ def run_cli(
             input_data = prompt
 
         if use_tty:
-            quoted = " ".join(shlex.quote(part) for part in full_cmd)
-            exec_cmd = ["script", "-q", "-e", "-c", quoted, "/dev/null"]
+            try:
+                returncode, stdout, stderr = run_with_pty(full_cmd, input_data or "")
+            except OSError:
+                returncode, stdout, stderr = run_with_script(
+                    full_cmd,
+                    input_data or "",
+                )
         else:
-            exec_cmd = full_cmd
-
-        completed = subprocess.run(
-            exec_cmd,
-            input=input_data,
-            capture_output=True,
-            text=True,
-        )
+            completed = subprocess.run(
+                full_cmd,
+                input=input_data,
+                capture_output=True,
+                text=True,
+            )
+            returncode = completed.returncode
+            stdout = completed.stdout or ""
+            stderr = completed.stderr or ""
     except FileNotFoundError as exc:
         print(f"[run_llm_cli] CLI not found: {exc}", file=sys.stderr)
         return 1
 
-    if completed.stdout:
-        print(completed.stdout.strip())
-    if completed.stderr:
-        print(completed.stderr.strip(), file=sys.stderr)
-    return completed.returncode
+    if stdout.strip():
+        print(stdout.strip())
+    if stderr.strip():
+        print(stderr.strip(), file=sys.stderr)
+    return returncode
+
+
+def run_with_pty(cmd: List[str], data: str) -> Tuple[int, str, str]:
+    import pty
+
+    master_fd, slave_fd = pty.openpty()
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdin=slave_fd,
+            stdout=slave_fd,
+            stderr=slave_fd,
+            text=False,
+        )
+    finally:
+        os.close(slave_fd)
+
+    output_chunks: List[str] = []
+    input_sent = False
+    try:
+        while True:
+            if not input_sent:
+                payload = data.encode("utf-8")
+                if payload:
+                    os.write(master_fd, payload)
+                os.write(master_fd, b"\n")
+                os.write(master_fd, b"\x04")
+                input_sent = True
+
+            ready, _, _ = select.select([master_fd], [], [], 0.1)
+            if master_fd in ready:
+                try:
+                    chunk = os.read(master_fd, 4096)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                output_chunks.append(chunk.decode("utf-8", errors="ignore"))
+            if process.poll() is not None and not ready:
+                break
+    finally:
+        os.close(master_fd)
+
+    returncode = process.wait()
+    combined = "".join(output_chunks)
+    return returncode, combined, ""
+
+
+def run_with_script(cmd: List[str], data: str) -> Tuple[int, str, str]:
+    quoted = " ".join(shlex.quote(part) for part in cmd)
+    exec_cmd = ["script", "-q", "-e", "-c", quoted, "/dev/null"]
+    completed = subprocess.run(
+        exec_cmd,
+        input=data,
+        capture_output=True,
+        text=True,
+    )
+    return completed.returncode, completed.stdout or "", completed.stderr or ""
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
