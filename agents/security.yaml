@@ -1,6 +1,6 @@
 name: security
 tool: claude
-model: claude-4.5-sonnet
+model: Sonnet
 workflow_rules:
   - workflow-rules/core-orangutan.md
 role_prompt: |

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 from typing import Any, List
@@ -46,21 +47,34 @@ def build_prompt(payload: dict[str, Any]) -> str:
 
 
 def run_cli(
-    cmd: List[str], prompt: str, prompt_mode: str, prompt_flag: str | None
+    cmd: List[str],
+    prompt: str,
+    prompt_mode: str,
+    prompt_flag: str | None,
+    use_tty: bool,
 ) -> int:
     try:
+        input_data = None
+        full_cmd = list(cmd)
         if prompt_mode == "flag":
             if not prompt_flag:
                 raise SystemExit("--prompt-flag is required when prompt-mode=flag")
-            full_cmd = cmd + [prompt_flag, prompt]
-            completed = subprocess.run(full_cmd, capture_output=True, text=True)
+            full_cmd.extend([prompt_flag, prompt])
         else:
-            completed = subprocess.run(
-                cmd,
-                input=prompt,
-                capture_output=True,
-                text=True,
-            )
+            input_data = prompt
+
+        if use_tty:
+            quoted = " ".join(shlex.quote(part) for part in full_cmd)
+            exec_cmd = ["script", "-q", "-e", "-c", quoted, "/dev/null"]
+        else:
+            exec_cmd = full_cmd
+
+        completed = subprocess.run(
+            exec_cmd,
+            input=input_data,
+            capture_output=True,
+            text=True,
+        )
     except FileNotFoundError as exc:
         print(f"[run_llm_cli] CLI not found: {exc}", file=sys.stderr)
         return 1
@@ -102,6 +116,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--prompt-flag",
         help="Flag name used when prompt-mode=flag (e.g., --text)",
     )
+    parser.add_argument(
+        "--use-tty",
+        action="store_true",
+        help="Wrap the CLI execution in a pseudo-TTY using the 'script' command.",
+    )
     return parser.parse_args(argv)
 
 
@@ -116,7 +135,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.extra_arg:
         command.extend(args.extra_arg)
 
-    return run_cli(command, prompt, args.prompt_mode, args.prompt_flag)
+    return run_cli(
+        command,
+        prompt,
+        args.prompt_mode,
+        args.prompt_flag,
+        args.use_tty,
+    )
 
 
 if __name__ == "__main__":

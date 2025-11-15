@@ -51,6 +51,7 @@ TOOL_WRAPPER_CONFIG: Dict[str, Dict[str, Any]] = {
     "codex": {
         "cmd": ["--cmd", "codex", "--cmd", "prompt"],
         "prompt_mode": "stdin",
+        "use_tty": True,
     },
 }
 PIPELINE_V01: List[str] = [
@@ -162,6 +163,8 @@ def build_agent_command(agent: Agent, use_mock_clis: bool) -> List[str]:
 
     extra_args = config.get("extra_args") or []
     cmd.extend(extra_args)
+    if config.get("use_tty"):
+        cmd.append("--use-tty")
     return cmd
 
 
