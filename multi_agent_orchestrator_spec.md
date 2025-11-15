@@ -1,4 +1,4 @@
-# FlowLint Multi-Agent Orchestrator – Spec v1
+# Orangutan Multi-Agent Orchestrator – Spec v1
 
 Tento dokument popisuje, jak postavit a provozovat multi-agentní software dev tým založený na:
 
@@ -33,7 +33,7 @@ project-root/
     security.md
     writer.md
   workflow-rules/
-    core-flowlint.md        # hlavní FlowLint pravidla
+    core-orangutan.md        # hlavní Orangutan pravidla
     team-x-rules.md         # custom rules pro konkrétní tým / produkt
     ...
 ```
@@ -43,7 +43,7 @@ Zásady:
 - Každý agent = jeden `.md` soubor v `agents/`.
 - Workflow rules se přesunou do samostatné složky `workflow-rules/`.
 - Každý tým může mít přiřazený:
-  - 1 hlavní ruleset (např. `core-flowlint.md`),
+  - 1 hlavní ruleset (např. `core-orangutan.md`),
   - + volitelné doplňkové rulesety (např. `security-hardening.md`).
 
 ---
@@ -53,7 +53,7 @@ Zásady:
 Každý agent je definovaný jedním Markdown souborem se strukturou:
 
 1. YAML frontmatter (mezi `---` nahoře) – metadata a CLI konfigurace.
-2. Tělo – prompt (role, responsibilities, collaboration, key practices, FlowLint sekce).
+2. Tělo – prompt (role, responsibilities, collaboration, key practices, Orangutan sekce).
 
 ### 2.1 Povinný frontmatter
 
@@ -95,7 +95,7 @@ Tělo definuje:
 - spolupráci a handoffy,
 - co je mimo scope,
 - klíčové praktiky,
-- případné FlowLint „kritické“ sekce.
+- případné Orangutan „kritické“ sekce.
 
 Agent by měl:
 
@@ -215,7 +215,7 @@ Key Practices:
 - Follow coding standards, include inline rationale when patterns deviate, and provide clear diffs or file listings for reviewers.
 - Keep reasoning lightweight—return the code, tests, and any blockers in concise bullet form so other agents can absorb outputs efficiently.
 
-## 📝 Issue Progress Reporting (FlowLint Workflow)
+## 📝 Issue Progress Reporting (Orangutan Workflow)
 
 **Your Responsibility:** Post daily progress updates in GitHub issue comments
 
@@ -288,7 +288,7 @@ None - on track for completion
 2025-11-15 16:00 UTC
 ```
 
-See `workflow-rules/core-flowlint.md` section 3 for complete templates and examples.
+See `workflow-rules/core-orangutan.md` section 3 for complete templates and examples.
 ```
 
 ---
@@ -385,9 +385,9 @@ Key Rules:
 - ✅ ALL commits MUST be pushed to GitHub
 - ✅ Commits MUST appear in PR before merge
 
-See `workflow-rules/core-flowlint.md` sections 1–2 (CRITICAL rules).
+See `workflow-rules/core-orangutan.md` sections 1–2 (CRITICAL rules).
 
-## ⚠️ CRITICAL: Merge Gate Rules (FlowLint Workflow)
+## ⚠️ CRITICAL: Merge Gate Rules (Orangutan Workflow)
 
 MANDATORY before ANY merge to main:
 - ✅ GitHub Actions CI Pipeline: ALL checks must PASS (TypeScript, tests, audit, build)
@@ -409,7 +409,7 @@ Your Responsibility:
 - Monitor pipeline during PR review
 - Verify ALL checks green BEFORE release-manager merges
 
-See `workflow-rules/core-flowlint.md` section 1 for detailed requirements.
+See `workflow-rules/core-orangutan.md` section 1 for detailed requirements.
 ```
 
 ---
@@ -447,7 +447,7 @@ Key Practices:
 - Use structured delegation templates (`<agent>: <task>, inputs, desired outputs`), close the loop on every request, and highlight risks or context-window concerns immediately.
 - Tag each dispatch with the Project board/milestone identifier so nothing drifts off-schedule and stale issues surface quickly.
 
-## 🔍 CRITICAL: Completion Verification (FlowLint)
+## 🔍 CRITICAL: Completion Verification (Orangutan)
 
 NEVER mark issue as Done without verifying:
 
@@ -464,7 +464,7 @@ If ANY verification fails:
 - Report back to agents to fix (missing commits, PR not merged, etc.)
 - Document blocker with specific error message
 
-See `workflow-rules/core-flowlint.md` sections 1–5 (CRITICAL rules) for details.
+See `workflow-rules/core-orangutan.md` sections 1–5 (CRITICAL rules) for details.
 ```
 
 ---
@@ -502,7 +502,7 @@ Key Practices:
 - Use concise status formats (goal, progress, risk, next step), maintain impeccable traceability from requirement to deployment, and keep calendars/boards always current.
 - Auto-triage new issues into the proper Project column, create a milestone immediately if one does not exist, and backfill existing orphan issues so dashboards stay source-of-truth.
 
-## 📋 Issue Lifecycle Management (FlowLint Workflow)
+## 📋 Issue Lifecycle Management (Orangutan Workflow)
 
 Your Critical Responsibilities:
 
@@ -526,7 +526,7 @@ Your Critical Responsibilities:
    - Close issue (if not auto-closed)
    - Remove "in-progress" label, add "done" label
 
-See `workflow-rules/core-flowlint.md` sections 2–4 for detailed templates and examples.
+See `workflow-rules/core-orangutan.md` sections 2–4 for detailed templates and examples.
 ```
 
 ---
@@ -596,7 +596,7 @@ Out of Scope:
 Key Practices:
 - Keep audit trails for every approval, document hotfix procedures, and ensure release artifacts are linked to issues and user stories.
 
-## 🔒 Merge Gate & Release Control (FlowLint Workflow)
+## 🔒 Merge Gate & Release Control (Orangutan Workflow)
 
 CRITICAL: Verify these BEFORE merging ANY PR to main:
 
@@ -608,7 +608,7 @@ Pre-Merge Checklist:
 - ✅ TypeScript Compilation: 0 errors
 - ✅ Security: No vulnerabilities detected
 
-Merge Decision Tree: see `workflow-rules/core-flowlint.md`.
+Merge Decision Tree: see `workflow-rules/core-orangutan.md`.
 
 Your Merge Responsibilities:
 - Verify all gates passed
@@ -800,7 +800,7 @@ Standardní vstup pro libovolného agenta:
 {{state.project_status or "(none yet)"}}
 
 #### Workflow Rules (active for this team/issue)
-{{state.workflow_rules or "(using default core-flowlint rules)"}}
+{{state.workflow_rules or "(using default core-orangutan rules)"}}
 
 ### TASK
 {{konkrétní úkol pro tohoto agenta}}
@@ -841,13 +841,13 @@ Orchestrátor očekává čtyři sekce:
 
 ## 6. Workflow rules (`workflow-rules/`)
 
-Složka `workflow-rules/` obsahuje spec pravidel (FlowLint, security gating, experimentální módy…).
+Složka `workflow-rules/` obsahuje spec pravidel (Orangutan, security gating, experimentální módy…).
 
 Příklad struktury:
 
 ```text
 workflow-rules/
-  core-flowlint.md          # základní pravidla pro většinu týmů
+  core-orangutan.md          # základní pravidla pro většinu týmů
   strict-security.md        # extra security gating
   low-risk-experiments.md   # uvolněnější pravidla pro experimentální feature
 ```
