@@ -185,7 +185,7 @@ class OrangutanConsole:
             return
         self.cancel_event.clear()
         effective_task = self._compose_task_with_flow(task)
-        print(f"\n[orangutan] Dispatching: {task}")
+        self._print_run_header(task)
         self._render_scenario()
         success = self._run_with_retries(effective_task)
         if self.console:
@@ -294,6 +294,19 @@ class OrangutanConsole:
             f"orchestrator agent: {self.custom_flow_note}"
         )
 
+    def _print_run_header(self, task: str) -> None:
+        message = (
+            f"\n[orangutan] Dispatching: {task}\n"
+            "[orangutan] Breaking the task into steps and running the team "
+            "in the documented workflow order…"
+        )
+        if self.console:
+            self.console.rule()
+            self.console.print(message)
+            self.console.rule()
+        else:
+            print(message)
+
     def _setup_readline(self) -> None:
         if not readline:
             return
@@ -361,6 +374,8 @@ class OrangutanConsole:
         summary = OrangutanConsole._extract_summary_lines(lines)
         formatted: List[str] = []
         for line in summary:
+            if line.strip().startswith("OpenAI Codex v"):
+                continue
             clean = line.strip().lstrip("-*• ").strip()
             if not clean:
                 continue

@@ -419,7 +419,33 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Use the bundled mock_* scripts instead of the configured CLI commands.",
     )
+    parser.add_argument(
+        "--allow-main-branch",
+        action="store_true",
+        default=False,
+        help="Permit running even when checked out on main/master (not recommended).",
+    )
     return parser.parse_args(argv)
+
+
+def ensure_feature_branch() -> None:
+    """Exit with error if the current git branch is main/master."""
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except Exception:
+        return
+    branch = completed.stdout.strip()
+    if branch in {"main", "master"}:
+        raise RuntimeError(
+            "Current branch is '"
+            + branch
+            + "'. Create and switch to a feature branch before running the pipeline."
+        )
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -437,6 +463,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             file=sys.stderr,
         )
         return 1
+
+    if not args.allow_main_branch:
+        try:
+            ensure_feature_branch()
+        except RuntimeError as branch_error:
+            print(f"[orchestrator] ERROR: {branch_error}", file=sys.stderr)
+            return 1
 
     state = initialize_state(args.task, args.workflow_rules)
     pipeline_success, failed_index = run_v01_pipeline(
