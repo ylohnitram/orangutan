@@ -160,7 +160,7 @@ def build_agent_command(agent: Agent, use_mock_clis: bool) -> List[str]:
             raise ValueError(
                 f"Tool '{agent.tool}' uses flag prompt mode but missing prompt_flag"
             )
-        cmd.append(f"--prompt-flag={prompt_flag}")
+        cmd.extend(["--prompt-flag", prompt_flag])
 
     extra_args = config.get("extra_args") or []
     cmd.extend(extra_args)
