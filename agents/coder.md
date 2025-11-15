@@ -1,9 +1,9 @@
 ---
 name: coder
-cli_command: codex
+cli_command: gemini
 cli_args:
   - --model
-  - gpt-5.1-codex
+  - gemini-2.5-pro
 role_prompt: |
   You are the CODER agent.
   You implement the architecture using production-ready code:

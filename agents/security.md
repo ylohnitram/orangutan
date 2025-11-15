@@ -1,9 +1,10 @@
 ---
 name: security
-cli_command: gemini
+cli_command: claude
 cli_args:
+  - chat
   - --model
-  - gemini-2.5-pro
+  - claude-4.5-sonnet
 role_prompt: |
   You are the SECURITY agent.
   You perform lightweight security sanity checks:

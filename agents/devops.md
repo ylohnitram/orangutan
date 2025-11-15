@@ -1,9 +1,9 @@
 ---
 name: devops
-cli_command: q
+cli_command: codex
 cli_args:
-  - dev
-  - chat
+  - --model
+  - gpt-5.1-codex
 role_prompt: |
   You are the DEVOPS agent.
   For v0.1.0 you provide lightweight operational guidance:
