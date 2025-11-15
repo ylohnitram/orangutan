@@ -62,6 +62,8 @@ def run_cli(
             if not prompt_flag:
                 raise SystemExit("--prompt-flag is required when prompt-mode=flag")
             full_cmd.extend([prompt_flag, prompt])
+        elif prompt_mode == "positional":
+            full_cmd.extend(["--", prompt])
         else:
             input_data = prompt
 
@@ -174,7 +176,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--prompt-mode",
-        choices=["stdin", "flag"],
+        choices=["stdin", "flag", "positional"],
         default="stdin",
         help="How to pass the prompt to the CLI",
     )

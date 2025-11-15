@@ -50,8 +50,7 @@ TOOL_WRAPPER_CONFIG: Dict[str, Dict[str, Any]] = {
     },
     "codex": {
         "cmd": ["--cmd", "codex", "--cmd", "exec"],
-        "prompt_mode": "flag",
-        "prompt_flag": "--prompt",
+        "prompt_mode": "positional",
         "use_tty": True,
     },
 }
