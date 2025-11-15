@@ -49,6 +49,7 @@ class OrangutanConsole:
         self._process_lock = threading.Lock()
         self._current_process = None
         self._last_interrupt = 0.0
+        self.custom_flow_note: Optional[str] = None
         signal.signal(signal.SIGINT, self._handle_sigint)
 
     # ------------------------------------------------------------------
@@ -103,6 +104,9 @@ class OrangutanConsole:
             if user_input.lower() in {":help", "help"}:
                 self._render_help()
                 continue
+            if user_input.lower().startswith(":flow"):
+                self._handle_flow_command(user_input)
+                continue
             self._dispatch_task(user_input)
 
         self.force_terminate()
@@ -127,9 +131,31 @@ class OrangutanConsole:
             "  <text>    Submit a natural-language request for the orchestrator\n"
             "  :help     Show this message\n"
             "  :q/quit   Exit the console\n"
+            "  :flow ... Configure or inspect the custom flow instructions\n"
             "Shortcuts:\n"
             "  Ctrl+C    Cancel the current run (press twice quickly to exit)"
         )
+
+    def _handle_flow_command(self, command: str) -> None:
+        parts = command.split(" ", 1)
+        if len(parts) == 1 or not parts[1].strip():
+            note = self.custom_flow_note or "<none configured>"
+            print(f"[orangutan] Current flow instructions: {note}")
+            print(
+                "  Usage: :flow <instructions> | :flow clear\n"
+                "         (instructions will be passed to the orchestrator agent)"
+            )
+            return
+        argument = parts[1].strip()
+        if argument.lower() in {"clear", "reset"}:
+            self.custom_flow_note = None
+            print("[orangutan] Custom flow instructions cleared.")
+        else:
+            self.custom_flow_note = argument
+            print(
+                "[orangutan] Custom flow instructions set."
+                " The orchestrator agent will adapt the scenario accordingly."
+            )
 
     # ------------------------------------------------------------------
     # Task execution
@@ -140,9 +166,10 @@ class OrangutanConsole:
         if not task:
             return
         self.cancel_event.clear()
+        effective_task = self._compose_task_with_flow(task)
         print(f"\n[orangutan] Dispatching: {task}")
         self._render_scenario()
-        success = self._run_with_retries(task)
+        success = self._run_with_retries(effective_task)
         if success:
             print("[orangutan] ✅ Task completed successfully.\n")
         else:
@@ -158,6 +185,8 @@ class OrangutanConsole:
                 return False
             print(f"[orangutan] Attempt {attempt}/{self.max_retries}")
             state = initialize_state(task, self.workflow_rules)
+            if self.custom_flow_note:
+                state["project_context"]["custom_flow"] = self.custom_flow_note
             attempt_failed = not self._run_pipeline_once(task, state)
             if not attempt_failed:
                 return True
@@ -188,6 +217,17 @@ class OrangutanConsole:
             desc = SCENARIO_DESCRIPTIONS.get(name)
             if desc:
                 print(f"  - {name}: {desc}")
+        if self.custom_flow_note:
+            print("  Custom instructions: " + self.custom_flow_note)
+
+    def _compose_task_with_flow(self, task: str) -> str:
+        if not self.custom_flow_note:
+            return task
+        return (
+            f"{task}\n\n"
+            "The human operator requested these custom flow adjustments for the "
+            f"orchestrator agent: {self.custom_flow_note}"
+        )
 
     def _run_agent(self, agent: Agent, state: Dict[str, Any], task: str) -> bool:
         label = f"[{agent.name}] working"
