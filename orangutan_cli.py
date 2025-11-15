@@ -9,6 +9,11 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    import readline
+except Exception:  # pragma: no cover - readline may not exist on Windows
+    readline = None  # type: ignore
+
 from orchestrator import (
     PIPELINE_V01,
     Agent,
@@ -50,6 +55,7 @@ class OrangutanConsole:
         self._current_process = None
         self._last_interrupt = 0.0
         self.custom_flow_note: Optional[str] = None
+        self._history: List[str] = []
         signal.signal(signal.SIGINT, self._handle_sigint)
 
     # ------------------------------------------------------------------
@@ -91,12 +97,14 @@ class OrangutanConsole:
 
     def run(self) -> int:
         self._render_welcome()
+        self._setup_readline()
         while not self.shutdown_event.is_set():
             try:
-                user_input = input("orangutan> ").strip()
+                user_input = input("orangutan> ")
             except EOFError:
                 print()
                 break
+            user_input = user_input.rstrip("\n")
             if not user_input:
                 continue
             if user_input.lower() in {":q", "quit", "exit"}:
@@ -107,6 +115,7 @@ class OrangutanConsole:
             if user_input.lower().startswith(":flow"):
                 self._handle_flow_command(user_input)
                 continue
+            self._history.append(user_input)
             self._dispatch_task(user_input)
 
         self.force_terminate()
@@ -133,7 +142,8 @@ class OrangutanConsole:
             "  :q/quit   Exit the console\n"
             "  :flow ... Configure or inspect the custom flow instructions\n"
             "Shortcuts:\n"
-            "  Ctrl+C    Cancel the current run (press twice quickly to exit)"
+            "  Ctrl+C    Cancel the current run (press twice quickly to exit)\n"
+            "  Ctrl+L    Clear the screen"
         )
 
     def _handle_flow_command(self, command: str) -> None:
@@ -251,6 +261,13 @@ class OrangutanConsole:
             "The human operator requested these custom flow adjustments for the "
             f"orchestrator agent: {self.custom_flow_note}"
         )
+
+    def _setup_readline(self) -> None:
+        if not readline:
+            return
+        for item in self._history:
+            readline.add_history(item)
+        readline.parse_and_bind("\C-l: clear-screen")
 
     def _run_agent(self, agent: Agent, state: Dict[str, Any], task: str) -> bool:
         label = f"[{agent.name}] working"
