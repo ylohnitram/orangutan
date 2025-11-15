@@ -14,6 +14,13 @@ try:
 except Exception:  # pragma: no cover - readline may not exist on Windows
     readline = None  # type: ignore
 
+try:
+    from rich.console import Console
+    from rich.table import Table
+except Exception:  # pragma: no cover - fallback if rich missing
+    Console = None  # type: ignore
+    Table = None  # type: ignore
+
 from orchestrator import (
     PIPELINE_V01,
     Agent,
@@ -56,6 +63,7 @@ class OrangutanConsole:
         self._last_interrupt = 0.0
         self.custom_flow_note: Optional[str] = None
         self._history: List[str] = []
+        self.console = Console() if Console else None
         signal.signal(signal.SIGINT, self._handle_sigint)
 
     # ------------------------------------------------------------------
@@ -180,13 +188,27 @@ class OrangutanConsole:
         print(f"\n[orangutan] Dispatching: {task}")
         self._render_scenario()
         success = self._run_with_retries(effective_task)
-        if success:
-            print("[orangutan] ✅ Task completed successfully.\n")
+        if self.console:
+            panel_text = (
+                "✅ Task completed successfully."
+                if success
+                else (
+                    "⚠️ Task cancelled."
+                    if self.cancel_event.is_set()
+                    else "❌ Task failed after retries."
+                )
+            )
+            self.console.rule()
+            self.console.print(panel_text)
+            self.console.rule()
         else:
-            if self.cancel_event.is_set():
-                print("[orangutan] ⚠️  Task cancelled.\n")
+            if success:
+                print("[orangutan] ✅ Task completed successfully.\n")
             else:
-                print("[orangutan] ❌ Task failed after retries.\n")
+                if self.cancel_event.is_set():
+                    print("[orangutan] ⚠️  Task cancelled.\n")
+                else:
+                    print("[orangutan] ❌ Task failed after retries.\n")
         self.cancel_event.clear()
 
     def _run_with_retries(self, task: str) -> bool:
@@ -230,6 +252,7 @@ class OrangutanConsole:
         *,
         start_index: int = 0,
     ) -> Tuple[bool, Optional[int]]:
+        statuses = {name: "pending" for name in PIPELINE_V01}
         for idx in range(start_index, len(PIPELINE_V01)):
             name = PIPELINE_V01[idx]
             agent = self.agents.get(name)
@@ -238,20 +261,29 @@ class OrangutanConsole:
                 return False, idx
             if self.cancel_event.is_set() or self.shutdown_event.is_set():
                 return False, None
+            self._render_status_table(statuses, current=name)
             agent_success = self._run_agent(agent, state, task)
+            statuses[name] = "success" if agent_success else "failed"
+            self._render_status_table(statuses)
             if not agent_success:
                 return False, idx
         return True, None
 
     def _render_scenario(self) -> None:
-        print("[orangutan] Scenario overview:")
-        print(f"  Flow: {' → '.join(PIPELINE_V01)}")
+        header = "[orangutan] Scenario overview:\n"
+        flow_line = f"  Flow: {' → '.join(PIPELINE_V01)}"
+        notes = []
         for name in PIPELINE_V01:
             desc = SCENARIO_DESCRIPTIONS.get(name)
             if desc:
-                print(f"  - {name}: {desc}")
+                notes.append(f"  - {name}: {desc}")
         if self.custom_flow_note:
-            print("  Custom instructions: " + self.custom_flow_note)
+            notes.append("  Custom instructions: " + self.custom_flow_note)
+        block = "\n".join([header.strip(), flow_line, *notes])
+        if self.console:
+            self.console.print(block)
+        else:
+            print(block)
 
     def _compose_task_with_flow(self, task: str) -> str:
         if not self.custom_flow_note:
@@ -269,15 +301,28 @@ class OrangutanConsole:
             readline.add_history(item)
         readline.parse_and_bind("\C-l: clear-screen")
 
+    def _render_status_table(
+        self, statuses: Dict[str, str], current: Optional[str] = None
+    ) -> None:
+        if not self.console or not Table:
+            return
+        table = Table(box=None)
+        table.add_column("Agent")
+        table.add_column("Status")
+        for name in PIPELINE_V01:
+            status = statuses.get(name, "pending")
+            if current == name and status == "pending":
+                status = "running"
+            icon = {
+                "pending": "…",
+                "running": "🟡",
+                "success": "✅",
+                "failed": "❌",
+            }.get(status, status)
+            table.add_row(name, icon)
+        self.console.print(table)
+
     def _run_agent(self, agent: Agent, state: Dict[str, Any], task: str) -> bool:
-        label = f"[{agent.name}] working"
-        stop_event = threading.Event()
-        spinner = threading.Thread(
-            target=self._spinner,
-            args=(label, stop_event),
-            daemon=True,
-        )
-        spinner.start()
         agent_success, stdout, stderr = execute_single_agent(
             agent,
             state,
@@ -286,20 +331,28 @@ class OrangutanConsole:
             verbose=False,
             on_process_start=self._track_process,
         )
-        stop_event.set()
-        spinner.join()
-
         summary_lines = self._summarize_output(stdout)
         icon = "✅" if agent_success else "❌"
-        print(f"{icon} {agent.name}")
-        for line in summary_lines:
-            print(f"    {line}")
-        if not agent_success and stderr:
-            err_line = next(
-                (line for line in stderr.splitlines() if line.strip()),
-                "Unknown error",
-            )
-            print(f"    error: {err_line}")
+        if self.console:
+            self.console.print(f"{icon} [bold]{agent.name}[/bold]")
+            for line in summary_lines:
+                self.console.print(f"    {line}")
+            if not agent_success and stderr:
+                err_line = next(
+                    (line for line in stderr.splitlines() if line.strip()),
+                    "Unknown error",
+                )
+                self.console.print(f"    [red]error:[/red] {err_line}")
+        else:
+            print(f"{icon} {agent.name}")
+            for line in summary_lines:
+                print(f"    {line}")
+            if not agent_success and stderr:
+                err_line = next(
+                    (line for line in stderr.splitlines() if line.strip()),
+                    "Unknown error",
+                )
+                print(f"    error: {err_line}")
         return agent_success
 
     @staticmethod
@@ -337,17 +390,6 @@ class OrangutanConsole:
         if not collected:
             collected = [ln for ln in (ln.strip() for ln in lines) if ln]
         return collected
-
-    @staticmethod
-    def _spinner(label: str, stop_event: threading.Event) -> None:
-        frames = ["|", "/", "-", "\\"]
-        idx = 0
-        while not stop_event.is_set():
-            frame = frames[idx % len(frames)]
-            idx += 1
-            print(f"\r{label} {frame}", end="", flush=True)
-            time.sleep(0.15)
-        print("\r" + " " * (len(label) + 2) + "\r", end="", flush=True)
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
