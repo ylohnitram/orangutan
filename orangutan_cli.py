@@ -4,10 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import re
 import signal
 import sys
+import termios
 import threading
 import time
+import tty
 from contextlib import nullcontext
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -100,6 +103,7 @@ class OrangutanConsole:
         self.custom_flow_note: Optional[str] = None
         self._history: List[str] = []
         self.console = Console() if Console else None
+        self._hil_policies: Dict[str, str] = {}
         signal.signal(signal.SIGINT, self._handle_sigint)
 
     # ------------------------------------------------------------------
@@ -457,6 +461,7 @@ class OrangutanConsole:
                     "Unknown error",
                 )
                 print(f"    error: {err_line}")
+        self._handle_hil_request(agent.name, stdout)
         return agent_success
 
     def _prepare_summary(self, agent_name: str, stdout: str) -> List[str]:
@@ -494,6 +499,98 @@ class OrangutanConsole:
         if fallback:
             return [f"- {text}" for text in fallback]
         return ["- Completed the step."]
+
+    def _handle_hil_request(self, agent_name: str, stdout: str) -> None:
+        matches = re.findall(r"<<HIL_REQUEST:(.*?)>>", stdout, re.DOTALL)
+        if not matches:
+            return
+        request = matches[-1].strip()
+        policy = self._hil_policies.get(agent_name)
+        if policy == "allow":
+            self._log_hil_decision(agent_name, "Allow always", request)
+            return
+        decision = self._prompt_hil_decision(agent_name, request)
+        if decision == "allow":
+            self._log_hil_decision(agent_name, "Allowed", request)
+        elif decision == "allow_always":
+            self._hil_policies[agent_name] = "allow"
+            self._log_hil_decision(agent_name, "Allow always (saved)", request)
+        elif decision == "deny":
+            self._log_hil_decision(agent_name, "Denied", request)
+        elif decision.startswith("instructions:"):
+            content = decision.split(":", 1)[1]
+            self._log_hil_decision(
+                agent_name, f"Provided custom instructions: {content}", request
+            )
+
+    def _log_hil_decision(self, agent_name: str, message: str, request: str) -> None:
+        text = f"[HIL] {agent_name}: {message}\n" f"       original request: {request}"
+        if self.console:
+            self.console.print(text)
+        else:
+            print(text)
+
+    def _prompt_hil_decision(self, agent_name: str, request: str) -> str:
+        options = [
+            "Allow this action",
+            "Always allow for this agent",
+            "Deny this action",
+            "Provide custom instructions",
+        ]
+        idx = 0
+        while True:
+            self._render_hil_menu(agent_name, request, options, idx)
+            key = self._read_key()
+            if key in {"\x1b[A", "k"}:
+                idx = (idx - 1) % len(options)
+            elif key in {"\x1b[B", "j"}:
+                idx = (idx + 1) % len(options)
+            elif key in {"\r", "\n"}:
+                choice = options[idx]
+                if choice == "Allow this action":
+                    return "allow"
+                if choice == "Always allow for this agent":
+                    return "allow_always"
+                if choice == "Deny this action":
+                    return "deny"
+                custom = input("Enter replacement instructions: ").strip()
+                return f"instructions:{custom}"
+
+    def _render_hil_menu(
+        self, agent_name: str, request: str, options: List[str], current: int
+    ) -> None:
+        header = (
+            f"[HIL] {agent_name} requests approval:\n"
+            f"      {request}\n"
+            "Use ↑/↓ to select, Enter to confirm."
+        )
+        if self.console:
+            lines = [header]
+            for idx, option in enumerate(options):
+                prefix = "➤" if idx == current else " "
+                lines.append(f"{prefix} {option}")
+            self.console.print("\n".join(lines))
+        else:
+            print(header)
+            for idx, option in enumerate(options):
+                prefix = ">" if idx == current else " "
+                print(f"{prefix} {option}")
+
+    def _read_key(self) -> str:
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch1 = sys.stdin.read(1)
+            if ch1 == "\x1b":
+                ch2 = sys.stdin.read(1)
+                if ch2 == "[":
+                    ch3 = sys.stdin.read(1)
+                    return ch1 + ch2 + ch3
+                return ch1 + ch2
+            return ch1
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
     @staticmethod
     def _spinner_loop(label: str, stop_event: threading.Event) -> None:
