@@ -289,6 +289,7 @@ class OrangutanConsole:
         start_index: int = 0,
     ) -> Tuple[bool, Optional[int]]:
         statuses = {name: "pending" for name in PIPELINE_V01}
+        start_times: Dict[str, float] = {}
         for idx in range(start_index, len(PIPELINE_V01)):
             name = PIPELINE_V01[idx]
             agent = self.agents.get(name)
@@ -298,11 +299,13 @@ class OrangutanConsole:
             if self.cancel_event.is_set() or self.shutdown_event.is_set():
                 return False, None
             self._render_status_table(statuses, current=name)
+            start_times[name] = time.perf_counter()
             self._log_agent_status(name, "running")
             agent_success = self._run_agent(agent, state, task)
             statuses[name] = "success" if agent_success else "failed"
             self._render_status_table(statuses)
-            self._log_agent_status(name, statuses[name])
+            elapsed = time.perf_counter() - start_times.get(name, time.perf_counter())
+            self._log_agent_status(name, statuses[name], elapsed)
             if not agent_success:
                 return False, idx
         return True, None
@@ -373,7 +376,9 @@ class OrangutanConsole:
             table.add_row(name, icon)
         self.console.print(table)
 
-    def _log_agent_status(self, name: str, status: str) -> None:
+    def _log_agent_status(
+        self, name: str, status: str, elapsed: Optional[float] = None
+    ) -> None:
         label = {
             "running": "[RUN ]",
             "success": "[ OK ]",
@@ -385,11 +390,13 @@ class OrangutanConsole:
         if desc:
             message += f" – {desc}"
         if status == "running":
-            message += "…"
+            message += "… (press Ctrl+C to interrupt)"
         elif status == "success":
             message += " – done."
         elif status == "failed":
             message += " – failed."
+        if status != "running" and elapsed is not None:
+            message += f" ({format_duration(elapsed)})"
         if self.console:
             self.console.print(message)
         else:
@@ -567,6 +574,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.task:
         return console.run_single_task(args.task)
     return console.run()
+
+
+def format_duration(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    mins, secs = divmod(seconds, 60)
+    if mins and secs:
+        return f"{mins}m {secs}s"
+    if mins and not secs:
+        return f"{mins}m"
+    return f"{secs}s"
 
 
 if __name__ == "__main__":
